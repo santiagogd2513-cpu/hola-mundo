@@ -1,0 +1,31 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="MIT"
+
+[[mods]]
+modId="bdacustica"
+version="3.0.0-final-ultra-bd7393"
+displayName="BD Acustica Ultra"
+logoFile="assets/bdacustica/textures/icon.png"
+authors="Santiago"
+credits="Autor: Santiago - Forja Studios"
+description='''
+BD Acustica Ultra complementado para Beautiful Decor v7.39.3 por Santiago.
+
+Incluye trazado multi-rebote en esfera de Fibonacci, soporte para streaming, difraccion multi-anillo,
+atmosfera barometrica por altitud/clima/agua y compatibilidad con puertas y audio de Beautiful Decor v7.39.3.
+'''
+
+[[dependencies.bdacustica]]
+    modId="forge"
+    mandatory=true
+    versionRange="[47,)"
+    ordering="NONE"
+    side="CLIENT"
+
+[[dependencies.bdacustica]]
+    modId="minecraft"
+    mandatory=true
+    versionRange="[1.20.1,1.21)"
+    ordering="NONE"
+    side="CLIENT"
