@@ -117,7 +117,9 @@ public final class MaterialAcoustics {
         if (state.is(Blocks.ICE) || state.is(Blocks.PACKED_ICE) || state.is(Blocks.BLUE_ICE)) {
             return new AcousticProps(0.13f, 0.21f, 0.27f, 0.93f, 0.03f, 0.46f);
         }
-        if (state.is(Blocks.GLASS) || state.is(Blocks.TINTED_GLASS) || state.is(BlockTags.GLASS_PANES)) {
+        // Fixed: GLASS_PANES tag resolution issue on this mapping set
+        if (state.is(Blocks.GLASS) || state.is(Blocks.TINTED_GLASS) || state.is(Blocks.GLASS_PANE) ||
+            state.getBlock().getClass().getSimpleName().contains("GlassPane") || state.getBlock().getClass().getSimpleName().contains("StainedGlassPane")) {
             return new AcousticProps(0.11f, 0.20f, 0.32f, 0.79f, 0.05f, 0.38f);
         }
 
