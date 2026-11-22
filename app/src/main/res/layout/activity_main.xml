@@ -1,54 +1,139 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
- android:layout_width="match_parent" android:layout_height="match_parent" android:fillViewport="true"
- android:background="#060D17" android:clipToPadding="false">
+ android:layout_width="match_parent" android:layout_height="match_parent"
+ android:background="#060D17" android:fillViewport="true">
  <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
   android:orientation="vertical" android:padding="10dp">
-  <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
-   <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
-    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="SKIN STUDIO 3D" android:textColor="#E3F2FD" android:textSize="19sp" android:textStyle="bold"/>
-    <TextView android:id="@+id/tvSkinFormatBadge" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Clásica • Java / Bedrock" android:textColor="#4FC3F7" android:textSize="11sp"/>
+
+  <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+   android:orientation="horizontal" android:gravity="center_vertical"
+   android:paddingBottom="5dp">
+   <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+    android:layout_weight="1" android:orientation="vertical">
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+     android:text="SKIN STUDIO 3D" android:textColor="#E3F2FD"
+     android:textSize="19sp" android:textStyle="bold"/>
+    <TextView android:id="@+id/tvSkinFormatBadge" android:layout_width="wrap_content"
+     android:layout_height="wrap_content" android:text="Clásica • Java / Bedrock"
+     android:textColor="#4FC3F7" android:textSize="11sp"/>
    </LinearLayout>
-   <Button android:id="@+id/btnLoadSkin" android:layout_width="wrap_content" android:layout_height="42dp" android:text="Cargar skin" android:textSize="11sp" android:backgroundTint="#1565C0"/>
+   <Button android:id="@+id/btnLoadSkin" android:layout_width="wrap_content"
+    android:layout_height="42dp" android:text="＋ Cargar skin"
+    android:textSize="11sp" android:backgroundTint="#1565C0"/>
   </LinearLayout>
-  <RadioGroup android:id="@+id/rgSkinType" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
-   <RadioButton android:id="@+id/rbClassic" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Classic (4 px)" android:textColor="#E3F2FD" android:buttonTint="#29B6F6" android:textSize="11sp"/>
-   <RadioButton android:id="@+id/rbSlim" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Slim (3 px)" android:textColor="#E3F2FD" android:buttonTint="#29B6F6" android:textSize="11sp"/>
+
+  <RadioGroup android:id="@+id/rgSkinType" android:layout_width="match_parent"
+   android:layout_height="wrap_content" android:orientation="horizontal"
+   android:background="#0D1E33" android:padding="3dp">
+   <RadioButton android:id="@+id/rbClassic" android:layout_width="0dp"
+    android:layout_height="wrap_content" android:layout_weight="1"
+    android:text="Classic (4 px)" android:textColor="#E3F2FD"
+    android:buttonTint="#29B6F6" android:textSize="11sp"/>
+   <RadioButton android:id="@+id/rbSlim" android:layout_width="0dp"
+    android:layout_height="wrap_content" android:layout_weight="1"
+    android:text="Slim (3 px)" android:textColor="#E3F2FD"
+    android:buttonTint="#29B6F6" android:textSize="11sp"/>
   </RadioGroup>
-  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="VISTA 3D • Arrastra para girar" android:textColor="#81D4FA" android:textSize="10sp" android:textStyle="bold"/>
-  <com.forjastudios.skinstudio.SkinViewport3DView android:id="@+id/viewport3D" android:layout_width="match_parent" android:layout_height="220dp" android:layout_marginTop="3dp"/>
-  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="PARTES DEL CUERPO" android:textColor="#81D4FA" android:textSize="10sp" android:textStyle="bold" android:layout_marginTop="5dp"/>
-  <HorizontalScrollView android:layout_width="match_parent" android:layout_height="42dp" android:scrollbars="none">
-   <LinearLayout android:layout_width="wrap_content" android:layout_height="match_parent" android:orientation="horizontal">
-    <Button android:id="@+id/btnPartHead" android:layout_width="wrap_content" android:layout_height="38dp" android:text="Cabeza" android:textSize="10sp"/>
-    <Button android:id="@+id/btnPartHair" android:layout_width="wrap_content" android:layout_height="38dp" android:text="Pelo" android:textSize="10sp"/>
-    <Button android:id="@+id/btnPartFace" android:layout_width="wrap_content" android:layout_height="38dp" android:text="Cara" android:textSize="10sp"/>
-    <Button android:id="@+id/btnPartChest" android:layout_width="wrap_content" android:layout_height="38dp" android:text="Pecho" android:textSize="10sp"/>
-    <Button android:id="@+id/btnPartArms" android:layout_width="wrap_content" android:layout_height="38dp" android:text="Brazos" android:textSize="10sp"/>
-    <Button android:id="@+id/btnPartHands" android:layout_width="wrap_content" android:layout_height="38dp" android:text="Manos" android:textSize="10sp"/>
-    <Button android:id="@+id/btnPartLegs" android:layout_width="wrap_content" android:layout_height="38dp" android:text="Piernas" android:textSize="10sp"/>
-    <Button android:id="@+id/btnPartShoes" android:layout_width="wrap_content" android:layout_height="38dp" android:text="Zapatos" android:textSize="10sp"/>
+
+  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+   android:layout_marginTop="7dp" android:text="VISTA 3D  •  Arrastra para girar"
+   android:textColor="#81D4FA" android:textSize="10sp" android:textStyle="bold"/>
+  <com.forjastudios.skinstudio.SkinViewport3DView
+   android:id="@+id/viewport3D" android:layout_width="match_parent"
+   android:layout_height="220dp" android:layout_marginTop="3dp"/>
+
+  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+   android:layout_marginTop="8dp" android:text="1. SELECCIONA UNA PARTE"
+   android:textColor="#81D4FA" android:textSize="10sp" android:textStyle="bold"/>
+  <HorizontalScrollView android:layout_width="match_parent"
+   android:layout_height="44dp" android:scrollbars="none">
+   <LinearLayout android:layout_width="wrap_content" android:layout_height="match_parent"
+    android:orientation="horizontal">
+    <Button android:id="@+id/btnPartHead" android:layout_width="wrap_content"
+     android:layout_height="38dp" android:text="Cabeza" android:textSize="10sp"/>
+    <Button android:id="@+id/btnPartHair" android:layout_width="wrap_content"
+     android:layout_height="38dp" android:text="Pelo" android:textSize="10sp"/>
+    <Button android:id="@+id/btnPartFace" android:layout_width="wrap_content"
+     android:layout_height="38dp" android:text="Cara" android:textSize="10sp"/>
+    <Button android:id="@+id/btnPartChest" android:layout_width="wrap_content"
+     android:layout_height="38dp" android:text="Pecho" android:textSize="10sp"/>
+    <Button android:id="@+id/btnPartArms" android:layout_width="wrap_content"
+     android:layout_height="38dp" android:text="Brazos" android:textSize="10sp"/>
+    <Button android:id="@+id/btnPartHands" android:layout_width="wrap_content"
+     android:layout_height="38dp" android:text="Manos" android:textSize="10sp"/>
+    <Button android:id="@+id/btnPartLegs" android:layout_width="wrap_content"
+     android:layout_height="38dp" android:text="Piernas" android:textSize="10sp"/>
+    <Button android:id="@+id/btnPartShoes" android:layout_width="wrap_content"
+     android:layout_height="38dp" android:text="Zapatos" android:textSize="10sp"/>
    </LinearLayout>
   </HorizontalScrollView>
-  <TextView android:id="@+id/tvSelectedPart" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Parte seleccionada: Cabeza" android:textColor="#B3E5FC" android:textSize="10sp" android:maxLines="2"/>
-  <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
-   <Button android:id="@+id/btnFillPart" android:layout_width="0dp" android:layout_height="38dp" android:layout_weight="1" android:text="Pintar parte completa" android:textSize="10sp" android:backgroundTint="#0D47A1"/>
-   <Button android:id="@+id/btnUniversalWheel" android:layout_width="0dp" android:layout_height="38dp" android:layout_weight="1" android:text="Rueda de color" android:textSize="10sp" android:backgroundTint="#0277BD"/>
+  <TextView android:id="@+id/tvSelectedPart" android:layout_width="match_parent"
+   android:layout_height="wrap_content" android:background="#0D1E33"
+   android:padding="7dp" android:text="Parte seleccionada: Cabeza"
+   android:textColor="#B3E5FC" android:textSize="10sp" android:maxLines="3"/>
+  <Button android:id="@+id/btnFillPart" android:layout_width="match_parent"
+   android:layout_height="38dp" android:layout_marginTop="4dp"
+   android:text="Rellenar parte completa" android:textSize="10sp"
+   android:backgroundTint="#0D47A1"/>
+
+  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+   android:layout_marginTop="8dp" android:text="2. COLOR Y PALETA"
+   android:textColor="#81D4FA" android:textSize="10sp" android:textStyle="bold"/>
+  <HorizontalScrollView android:id="@+id/hsvPaletteScroll"
+   android:layout_width="match_parent" android:layout_height="42dp"
+   android:layout_marginTop="3dp" android:scrollbars="none"/>
+  <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+   android:orientation="horizontal" android:gravity="center_vertical">
+   <TextView android:id="@+id/tvColorInfo" android:layout_width="0dp"
+    android:layout_height="wrap_content" android:layout_weight="1"
+    android:text="Color activo • #29B6F6" android:textColor="#4FC3F7"
+    android:textSize="10sp"/>
+   <Button android:id="@+id/btnUniversalWheel" android:layout_width="wrap_content"
+    android:layout_height="36dp" android:text="Rueda universal"
+    android:textSize="10sp" android:backgroundTint="#0277BD"/>
   </LinearLayout>
-  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="TEXTURA 2D • Pinta directamente los píxeles" android:textColor="#81D4FA" android:textSize="10sp" android:textStyle="bold"/>
-  <com.forjastudios.skinstudio.SkinTextureEditorView android:id="@+id/textureEditor" android:layout_width="match_parent" android:layout_height="200dp" android:layout_marginTop="3dp"/>
-  <HorizontalScrollView android:id="@+id/hsvPaletteScroll" android:layout_width="match_parent" android:layout_height="42dp" android:layout_marginTop="4dp" android:scrollbars="none"/>
-  <TextView android:id="@+id/tvColorInfo" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Color activo • #29B6F6" android:textColor="#4FC3F7" android:textSize="10sp"/>
-  <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
-   <Button android:id="@+id/btnBrush" android:layout_width="0dp" android:layout_height="38dp" android:layout_weight="1" android:text="Pincel" android:textSize="10sp" android:backgroundTint="#1565C0"/>
-   <Button android:id="@+id/btnBucket" android:layout_width="0dp" android:layout_height="38dp" android:layout_weight="1" android:text="Cubeta" android:textSize="10sp" android:backgroundTint="#1976D2"/>
-   <Button android:id="@+id/btnEraser" android:layout_width="0dp" android:layout_height="38dp" android:layout_weight="1" android:text="Borrador" android:textSize="10sp" android:backgroundTint="#263B52"/>
-   <Button android:id="@+id/btnResetCam" android:layout_width="0dp" android:layout_height="38dp" android:layout_weight="1" android:text="Reset 3D" android:textSize="10sp" android:backgroundTint="#263B52"/>
+
+  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+   android:layout_marginTop="8dp" android:text="3. HERRAMIENTAS DE PINTURA"
+   android:textColor="#81D4FA" android:textSize="10sp" android:textStyle="bold"/>
+  <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+   android:orientation="horizontal">
+   <Button android:id="@+id/btnBrush" android:layout_width="0dp"
+    android:layout_height="40dp" android:layout_weight="1" android:text="Pincel"
+    android:textSize="9sp" android:backgroundTint="#1565C0"/>
+   <Button android:id="@+id/btnBucket" android:layout_width="0dp"
+    android:layout_height="40dp" android:layout_weight="1" android:text="Cubeta"
+    android:textSize="9sp" android:backgroundTint="#1976D2"/>
+   <Button android:id="@+id/btnPicker" android:layout_width="0dp"
+    android:layout_height="40dp" android:layout_weight="1" android:text="Gotero"
+    android:textSize="9sp" android:backgroundTint="#0288D1"/>
+   <Button android:id="@+id/btnEraser" android:layout_width="0dp"
+    android:layout_height="40dp" android:layout_weight="1" android:text="Borrador"
+    android:textSize="9sp" android:backgroundTint="#263B52"/>
+   <Button android:id="@+id/btnResetCam" android:layout_width="0dp"
+    android:layout_height="40dp" android:layout_weight="1" android:text="Reset 3D"
+    android:textSize="9sp" android:backgroundTint="#263B52"/>
   </LinearLayout>
-  <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
-   <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Tamaño pincel" android:textColor="#90CAF9" android:textSize="10sp"/>
-   <SeekBar android:id="@+id/seekBrushSize" android:layout_width="0dp" android:layout_height="30dp" android:layout_weight="1" android:max="5" android:progress="1" android:progressTint="#29B6F6" android:thumbTint="#81D4FA"/>
+
+  <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+   android:orientation="horizontal" android:gravity="center_vertical"
+   android:paddingTop="2dp">
+   <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+    android:text="Tamaño" android:textColor="#90CAF9" android:textSize="10sp"/>
+   <SeekBar android:id="@+id/seekBrushSize" android:layout_width="0dp"
+    android:layout_height="30dp" android:layout_weight="1" android:max="8"
+    android:progress="0" android:progressTint="#29B6F6" android:thumbTint="#81D4FA"/>
   </LinearLayout>
-  <TextView android:id="@+id/tvToolDescription" android:layout_width="match_parent" android:layout_height="wrap_content" android:background="#0D1E33" android:padding="7dp" android:text="Pincel • Pinta píxeles de la textura." android:textColor="#B3E5FC" android:textSize="10sp"/>
+  <TextView android:id="@+id/tvToolDescription" android:layout_width="match_parent"
+   android:layout_height="wrap_content" android:background="#0D1E33"
+   android:padding="8dp" android:text="Pincel • Dibuja sobre la textura."
+   android:textColor="#B3E5FC" android:textSize="10sp"/>
+
+  <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+   android:layout_marginTop="8dp" android:text="4. TEXTURA 2D • EDITA LOS PÍXELES"
+   android:textColor="#81D4FA" android:textSize="10sp" android:textStyle="bold"/>
+  <com.forjastudios.skinstudio.SkinTextureEditorView
+   android:id="@+id/textureEditor" android:layout_width="match_parent"
+   android:layout_height="190dp" android:layout_marginTop="4dp"/>
  </LinearLayout>
 </ScrollView>
