@@ -8,6 +8,7 @@ import android.graphics.Paint;
 import android.graphics.Path;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
+import android.view.ScaleGestureDetector;
 import android.view.View;
 
 public class SkinViewport3DView extends View {
@@ -15,15 +16,17 @@ public class SkinViewport3DView extends View {
     private final Paint outlinePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint highlightPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint facePaint = new Paint();
+    private final ScaleGestureDetector scaleDetector;
     private SkinCanvasModel model;
     private float yawDeg = 32f, pitchDeg = 16f, zoom = 1.0f, lastTouchX, lastTouchY;
 
-    public SkinViewport3DView(Context c) { super(c); init(); }
-    public SkinViewport3DView(Context c, AttributeSet a) { super(c, a); init(); }
-    public SkinViewport3DView(Context c, AttributeSet a, int d) { super(c, a, d); init(); }
+    public SkinViewport3DView(Context c) { super(c); scaleDetector = new ScaleGestureDetector(c, new ZoomListener()); init(); }
+    public SkinViewport3DView(Context c, AttributeSet a) { super(c, a); scaleDetector = new ScaleGestureDetector(c, new ZoomListener()); init(); }
+    public SkinViewport3DView(Context c, AttributeSet a, int d) { super(c, a, d); scaleDetector = new ScaleGestureDetector(c, new ZoomListener()); init(); }
 
     private void init() {
         setClickable(true);
+        setBackgroundColor(Color.parseColor("#07111F"));
         gridPaint.setColor(Color.parseColor("#173459"));
         gridPaint.setStrokeWidth(1.5f);
         gridPaint.setStyle(Paint.Style.STROKE);
@@ -37,23 +40,55 @@ public class SkinViewport3DView extends View {
         facePaint.setFilterBitmap(false);
     }
 
+    private class ZoomListener extends ScaleGestureDetector.SimpleOnScaleGestureListener {
+        @Override public boolean onScale(ScaleGestureDetector detector) {
+            zoom = Math.max(.65f, Math.min(2.4f, zoom * detector.getScaleFactor()));
+            invalidate();
+            return true;
+        }
+    }
+
     public void bindModel(SkinCanvasModel m) { model = m; invalidate(); }
     public void resetCamera() { yawDeg = 32f; pitchDeg = 16f; zoom = 1f; invalidate(); }
-    public void adjustZoom(float delta) { zoom = Math.max(.65f, Math.min(1.65f, zoom + delta)); invalidate(); }
+    public void adjustZoom(float delta) { zoom = Math.max(.65f, Math.min(2.4f, zoom + delta)); invalidate(); }
 
     @Override public boolean onTouchEvent(MotionEvent event) {
         if (event == null) return false;
+        scaleDetector.onTouchEvent(event);
         switch (event.getActionMasked()) {
             case MotionEvent.ACTION_DOWN:
-                lastTouchX = event.getX(); lastTouchY = event.getY(); return true;
+                lastTouchX = event.getX();
+                lastTouchY = event.getY();
+                getParent().requestDisallowInterceptTouchEvent(true);
+                return true;
             case MotionEvent.ACTION_MOVE:
-                float dx = event.getX() - lastTouchX, dy = event.getY() - lastTouchY;
-                yawDeg += dx * .55f;
-                pitchDeg = Math.max(-65f, Math.min(65f, pitchDeg + dy * .45f));
-                lastTouchX = event.getX(); lastTouchY = event.getY();
-                invalidate(); return true;
-            default: return super.onTouchEvent(event);
+                if (!scaleDetector.isInProgress() && event.getPointerCount() == 1) {
+                    float dx = event.getX() - lastTouchX, dy = event.getY() - lastTouchY;
+                    yawDeg += dx * .62f;
+                    pitchDeg = Math.max(-75f, Math.min(75f, pitchDeg + dy * .5f));
+                    lastTouchX = event.getX();
+                    lastTouchY = event.getY();
+                    invalidate();
+                }
+                return true;
+            case MotionEvent.ACTION_POINTER_DOWN:
+                return true;
+            case MotionEvent.ACTION_POINTER_UP:
+                lastTouchX = event.getX(0);
+                lastTouchY = event.getY(0);
+                return true;
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
+                getParent().requestDisallowInterceptTouchEvent(false);
+                performClick();
+                return true;
+            default: return true;
         }
+    }
+
+    @Override public boolean performClick() {
+        super.performClick();
+        return true;
     }
 
     @Override protected void onDraw(Canvas canvas) {
@@ -62,7 +97,8 @@ public class SkinViewport3DView extends View {
         int w = getWidth(), h = getHeight();
         if (w <= 0 || h <= 0) return;
         drawFloorGrid(canvas, w, h);
-        float scale = Math.min(w, h) / 42f * zoom, cx = w * .5f, cy = h * .52f;
+        float scale = Math.min(w / 22f, h / 38f) * zoom;
+        float cx = w * .5f, cy = h * .53f;
         boolean slim = model != null && model.getCurrentSkinType() == SkinType.SLIM;
         float armW = slim ? 3f : 4f;
         BodyPart selected = model != null ? model.getSelectedPart() : BodyPart.HEAD;
