@@ -1,23 +1,33 @@
-# BD Acustica Ultra Complemento (Minecraft Forge 1.20.1)
+# Minecraft Skin Studio 3D
 
-Mod de físicas acústicas avanzadas para Beautiful Decor v7.39.3.
+Aplicación Android para crear y editar skins de Minecraft, desarrollada en Java.
 
-Autor: Santiago (Forja Studios)
+## Funciones incluidas en esta base
 
-## GitHub Actions
+- Vista 3D rotatoria del personaje.
+- Modelos Classic y Slim.
+- Selector de partes del cuerpo.
+- Paleta de cientos de tonos y rueda universal HSV.
+- Tema oscuro azul.
 
-El workflow `.github/workflows/build.yml` compila automáticamente el mod con Gradle + ForgeGradle en cada push a `main` o pull request.
+## Compilación automática
 
-El artefacto JAR se sube como artifact de la Actions run.
+El workflow `.github/workflows/skin-studio-build.yml` compila el APK de depuración con Java 17, Gradle 8.7 y Android SDK 34.
 
-## Cómo construir localmente
+- Se ejecuta en cada push a `skin-studio/setup-ci`.
+- También admite ejecución manual desde GitHub Actions.
+- El APK se publica como artifact `Minecraft-Skin-Studio-debug-apk`.
 
-```bash
-gradle build
+## Compilación local
+
+Con Gradle 8.7 instalado:
+
+```sh
+gradle --no-daemon :app:assembleDebug
 ```
 
-Requiere Java 17.
+## Identificador
 
-## Nota
-
-Se subieron los archivos de configuración y la mayoría del código fuente. Los archivos grandes del motor acústico (`AcousticRaytracer.java` y `SoundPhysicsHandler.java`) + iconos se pueden añadir manualmente desde el ZIP original para completar el build.
+- Application ID: `com.forjastudios.skinstudio`
+- Android mínimo: API 24
+- Target: API 34
