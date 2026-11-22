@@ -2,7 +2,6 @@ package com.forjastudios.skinstudio;
 
 import android.graphics.Bitmap;
 import android.graphics.Color;
-import java.util.Arrays;
 
 public class SkinCanvasModel {
     public static final int SKIN_WIDTH=64, SKIN_HEIGHT=64;
@@ -42,13 +41,12 @@ public class SkinCanvasModel {
     }
     public int floodFill(int startX,int startY){
         if(!inside(startX,startY))return 0;
-        int target=skinBitmap.getPixel(startX,startY), replacement=eraserMode?Color.TRANSPARENT:activeColor;
+        int target=skinBitmap.getPixel(startX,startY),replacement=eraserMode?Color.TRANSPARENT:activeColor;
         if(target==replacement)return 0;
         int[] queue=new int[SKIN_WIDTH*SKIN_HEIGHT];boolean[] seen=new boolean[queue.length];
         int head=0,tail=0,start=startY*SKIN_WIDTH+startX;queue[tail++]=start;seen[start]=true;
         while(head<tail){
             int p=queue[head++],x=p%SKIN_WIDTH,y=p/SKIN_WIDTH;
-            if(skinBitmap.getPixel(x,y)!=target)continue;
             skinBitmap.setPixel(x,y,replacement);
             if(x>0)tail=enqueue(p-1,target,queue,seen,tail);
             if(x<63)tail=enqueue(p+1,target,queue,seen,tail);
@@ -61,20 +59,16 @@ public class SkinCanvasModel {
         if(!seen[p]&&skinBitmap.getPixel(p%64,p/64)==target){seen[p]=true;q[tail++]=p;}return tail;
     }
     private boolean inside(int x,int y){return x>=0&&x<64&&y>=0&&y<64;}
-    public void loadSkin(Bitmap source){
-        if(source==null)return;
+    public boolean loadSkin(Bitmap source){
+        if(source==null)return false;
+        int w=source.getWidth(),h=source.getHeight();
+        if(w<=0||h<=0||((long)w*1L!=h*1L&&(long)w*1L!=h*2L))return false;
+        int normalizedHeight=h*2==w?32:64;
         Bitmap normalized=Bitmap.createBitmap(64,64,Bitmap.Config.ARGB_8888);
         normalized.eraseColor(Color.TRANSPARENT);
-        Bitmap scaled=Bitmap.createScaledBitmap(source,64,source.getHeight()==32?32:64,false);
-        CanvasCopy.copy(scaled,normalized);
-        skinBitmap=normalized;
-        eraserMode=false;
-    }
-    private static class CanvasCopy{
-        static void copy(Bitmap src,Bitmap dst){
-            android.graphics.Canvas c=new android.graphics.Canvas(dst);
-            c.drawBitmap(src,0,0,new android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG));
-        }
+        Bitmap scaled=Bitmap.createScaledBitmap(source,64,normalizedHeight,false);
+        new android.graphics.Canvas(normalized).drawBitmap(scaled,0,0,new android.graphics.Paint());
+        skinBitmap=normalized;eraserMode=false;return true;
     }
     public Bitmap getSkinBitmap(){return skinBitmap;}
     public SkinType getCurrentSkinType(){return currentSkinType;}
