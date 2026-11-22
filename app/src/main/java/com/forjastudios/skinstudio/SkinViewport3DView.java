@@ -19,6 +19,7 @@ public class SkinViewport3DView extends View {
     private final ScaleGestureDetector scaleDetector;
     private SkinCanvasModel model;
     private float yawDeg = 32f, pitchDeg = 16f, zoom = 1.0f, lastTouchX, lastTouchY;
+    private SkinTextureEditorView.Tool activeTool = SkinTextureEditorView.Tool.BRUSH;
 
     public SkinViewport3DView(Context c) { super(c); scaleDetector = new ScaleGestureDetector(c, new ZoomListener()); init(); }
     public SkinViewport3DView(Context c, AttributeSet a) { super(c, a); scaleDetector = new ScaleGestureDetector(c, new ZoomListener()); init(); }
@@ -49,6 +50,7 @@ public class SkinViewport3DView extends View {
     }
 
     public void bindModel(SkinCanvasModel m) { model = m; invalidate(); }
+    public void setTool(SkinTextureEditorView.Tool tool) { if (tool != null) activeTool = tool; }
     public void resetCamera() { yawDeg = 32f; pitchDeg = 16f; zoom = 1f; invalidate(); }
     public void adjustZoom(float delta) { zoom = Math.max(.65f, Math.min(2.4f, zoom + delta)); invalidate(); }
 
@@ -59,31 +61,52 @@ public class SkinViewport3DView extends View {
             case MotionEvent.ACTION_DOWN:
                 lastTouchX = event.getX();
                 lastTouchY = event.getY();
-                getParent().requestDisallowInterceptTouchEvent(true);
+                if (getParent() != null) getParent().requestDisallowInterceptTouchEvent(true);
+                if (event.getPointerCount() == 1) applyToolAt(event.getX(), event.getY());
                 return true;
             case MotionEvent.ACTION_MOVE:
-                if (!scaleDetector.isInProgress() && event.getPointerCount() == 1) {
-                    float dx = event.getX() - lastTouchX, dy = event.getY() - lastTouchY;
-                    yawDeg += dx * .62f;
-                    pitchDeg = Math.max(-75f, Math.min(75f, pitchDeg + dy * .5f));
-                    lastTouchX = event.getX();
-                    lastTouchY = event.getY();
-                    invalidate();
+                if (event.getPointerCount() == 1 && !scaleDetector.isInProgress()
+                        && activeTool == SkinTextureEditorView.Tool.BRUSH) {
+                    applyToolAt(event.getX(), event.getY());
                 }
                 return true;
             case MotionEvent.ACTION_POINTER_DOWN:
-                return true;
             case MotionEvent.ACTION_POINTER_UP:
-                lastTouchX = event.getX(0);
-                lastTouchY = event.getY(0);
                 return true;
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_CANCEL:
-                getParent().requestDisallowInterceptTouchEvent(false);
+                if (getParent() != null) getParent().requestDisallowInterceptTouchEvent(false);
                 performClick();
                 return true;
             default: return true;
         }
+    }
+
+    // Tool taps edit the selected UV region without moving the 3D camera.
+    private void applyToolAt(float touchX, float touchY) {
+        if (model == null || getWidth() <= 0 || getHeight() <= 0) return;
+        BodyPart part = model.getSelectedPart();
+        if (part == null) return;
+        int[][] regions = part.getRegions(model.getCurrentSkinType());
+        if (regions.length == 0) return;
+        float nx = Math.max(0f, Math.min(.999f, touchX / getWidth()));
+        float ny = Math.max(0f, Math.min(.999f, touchY / getHeight()));
+        float regionPosition = nx * regions.length;
+        int regionIndex = Math.min(regions.length - 1, (int) regionPosition);
+        int[] r = regions[regionIndex];
+        int x = r[0] + Math.min(r[2] - r[0] - 1,
+            (int)((regionPosition - regionIndex) * (r[2] - r[0])));
+        int y = r[1] + Math.min(r[3] - r[1] - 1, (int)(ny * (r[3] - r[1])));
+        x = Math.max(0, Math.min(63, x));
+        y = Math.max(0, Math.min(63, y));
+        if (activeTool == SkinTextureEditorView.Tool.BUCKET) {
+            model.floodFill(x, y);
+        } else if (activeTool == SkinTextureEditorView.Tool.PICKER) {
+            model.setActiveColor(model.getPixelColor(x, y));
+        } else {
+            model.paintPixel(x, y);
+        }
+        invalidate();
     }
 
     @Override public boolean performClick() {
