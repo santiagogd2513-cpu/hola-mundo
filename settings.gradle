@@ -1,11 +1,16 @@
 pluginManagement {
     repositories {
+        google()
+        mavenCentral()
         gradlePluginPortal()
-        maven {
-            name = 'MinecraftForge'
-            url = 'https://maven.minecraftforge.net/'
-        }
     }
 }
-
-rootProject.name = 'BD-Acustica-Ultra-Complemento-7.39.3'
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+rootProject.name = "MinecraftSkinStudioJava"
+include(":app")
