@@ -33,7 +33,7 @@ public class MainActivity extends AppCompatActivity {
         tvSelectedPart=findViewById(R.id.tvSelectedPart);tvSkinFormatBadge=findViewById(R.id.tvSkinFormatBadge);
         tvColorInfo=findViewById(R.id.tvColorInfo);tvToolDescription=findViewById(R.id.tvToolDescription);
         viewport3D.bindModel(skinModel);textureEditor.bindModel(skinModel);
-        textureEditor.setOnTextureChangedListener(()->refreshViews());
+        textureEditor.setOnTextureChangedListener(this::refreshViews);
         loadSkinLauncher=registerForActivityResult(new ActivityResultContracts.OpenDocument(),this::onSkinPicked);
         setupSkinTypeSelector();setupPartSelector();setupPalette();setupUniversalWheel();setupTools();setupLoadButton();
         refreshUiLabels();updateColorLabel("Azul cielo");setToolDescription("Pincel");
@@ -48,7 +48,7 @@ public class MainActivity extends AppCompatActivity {
         bindPart(R.id.btnPartChest,BodyPart.CHEST);bindPart(R.id.btnPartArms,BodyPart.ARMS);bindPart(R.id.btnPartHands,BodyPart.HANDS);
         bindPart(R.id.btnPartLegs,BodyPart.LEGS);bindPart(R.id.btnPartShoes,BodyPart.SHOES);
         Button fill=findViewById(R.id.btnFillPart);
-        if(fill!=null)fill.setOnClickListener(v->{skinModel.fillPart(skinModel.getSelectedPart());refreshViews();Toast.makeText(this,"Parte completa pintada",Toast.LENGTH_SHORT).show();});
+        if(fill!=null)fill.setOnClickListener(v->{skinModel.fillPart(skinModel.getSelectedPart());setToolDescription("Pintar parte");refreshViews();Toast.makeText(this,"Parte completa pintada",Toast.LENGTH_SHORT).show();});
     }
     private void bindPart(int id,BodyPart part){
         Button b=findViewById(id);if(b!=null)b.setOnClickListener(v->{skinModel.setSelectedPart(part);refreshUiLabels();});
@@ -65,11 +65,10 @@ public class MainActivity extends AppCompatActivity {
         scroll.removeAllViews();scroll.addView(row);
     }
     private void setupUniversalWheel(){
-        Button b=findViewById(R.id.btnUniversalWheel);if(b!=null)b.setOnClickListener(v->{
+        Button b=findViewById(R.id.btnUniversalWheel);if(b!=null)b.setOnClickListener(v->
             new UniversalColorWheelDialog().show(this,skinModel.getActiveColor(),(color,desc)->{
                 skinModel.setActiveColor(color);updateColorLabel(desc);refreshViews();Toast.makeText(this,"Color aplicado",Toast.LENGTH_SHORT).show();
-            });
-        });
+            }));
     }
     private void setupTools(){
         Button brush=findViewById(R.id.btnBrush),bucket=findViewById(R.id.btnBucket),eraser=findViewById(R.id.btnEraser),reset=findViewById(R.id.btnResetCam);
@@ -87,10 +86,10 @@ public class MainActivity extends AppCompatActivity {
         if(tvToolDescription==null)return;
         String description;
         switch(tool){
-            case "Cubeta":description="Rellena de un solo toque toda la zona conectada que tenga el mismo color.";break;
+            case "Cubeta":description="Rellena de un toque toda la zona conectada que tenga el mismo color.";break;
             case "Borrador":description="Pinta píxeles transparentes para quitar el color de la textura.";break;
             case "Pintar parte":description="Aplica el color activo a todas las zonas UV de la parte seleccionada.";break;
-            default:description="Pinta píxeles de la textura. Desliza el dedo para dibujar; ajusta el tamaño con el control.";break;
+            default:description="Pinta píxeles de la textura. Desliza el dedo para dibujar y ajusta el tamaño.";break;
         }
         tvToolDescription.setText(tool+" • "+description);
     }
@@ -102,8 +101,8 @@ public class MainActivity extends AppCompatActivity {
         try(InputStream in=getContentResolver().openInputStream(uri)){
             Bitmap bmp=BitmapFactory.decodeStream(in);
             if(bmp==null){Toast.makeText(this,"No se pudo leer la imagen",Toast.LENGTH_LONG).show();return;}
-            if(bmp.getWidth()<1||bmp.getHeight()<1){Toast.makeText(this,"Imagen no válida",Toast.LENGTH_LONG).show();return;}
-            skinModel.loadSkin(bmp);refreshViews();Toast.makeText(this,"Skin cargada. Puedes editarla.",Toast.LENGTH_SHORT).show();
+            if(!skinModel.loadSkin(bmp)){Toast.makeText(this,"Formato no compatible. Usa una skin PNG cuadrada 64×64 o clásica 64×32.",Toast.LENGTH_LONG).show();return;}
+            refreshViews();Toast.makeText(this,"Skin cargada. Ya puedes editarla.",Toast.LENGTH_SHORT).show();
         }catch(Exception ex){Toast.makeText(this,"No se pudo cargar la skin: "+ex.getMessage(),Toast.LENGTH_LONG).show();}
     }
     private void updateColorLabel(String name){
