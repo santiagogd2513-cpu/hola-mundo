@@ -2,7 +2,7 @@
 
 ## Features in the current update
 
-- Reorganized dark-blue editor interface.
+- Reorganized, vertically scrollable dark-blue editor interface with a larger 2D texture workspace.
 - Classic and Slim model selector.
 - 3D preview with drag-to-rotate.
 - 2D 64x64 skin texture editor.
