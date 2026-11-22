@@ -1,1 +1,0 @@
-Trigger a fresh Skin Studio APK workflow using the corrected Android SDK setup.
