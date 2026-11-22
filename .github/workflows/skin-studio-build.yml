@@ -5,6 +5,10 @@ on:
       - skin-studio/setup-ci
   workflow_dispatch:
 
+concurrency:
+  group: skin-studio-build-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
