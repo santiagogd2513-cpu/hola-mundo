@@ -32,50 +32,50 @@
 
   <LinearLayout android:layout_width="match_parent" android:layout_height="440dp"
    android:orientation="horizontal" android:gravity="center_vertical">
-   <ScrollView android:layout_width="60dp" android:layout_height="match_parent"
+   <ScrollView android:layout_width="56dp" android:layout_height="match_parent"
     android:scrollbars="none" android:background="#0A192B">
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
      android:orientation="vertical" android:gravity="center_horizontal" android:padding="2dp">
      <Button android:id="@+id/btnLoadSkin" android:layout_width="match_parent"
-      android:layout_height="42dp" android:minWidth="0dp" android:minHeight="0dp"
+      android:layout_height="36dp" android:minWidth="0dp" android:minHeight="0dp"
       android:insetTop="0dp" android:insetBottom="0dp" android:padding="1dp"
-      android:text="＋\nAbrir" android:textSize="8sp" android:backgroundTint="#1565C0"/>
+      android:text="＋ Abrir" android:textSize="7sp" android:backgroundTint="#1565C0"/>
      <Button android:id="@+id/btnPartHead" android:layout_width="match_parent"
-      android:layout_height="40dp" android:minWidth="0dp" android:minHeight="0dp"
+      android:layout_height="34dp" android:minWidth="0dp" android:minHeight="0dp"
       android:insetTop="0dp" android:insetBottom="0dp" android:padding="0dp"
-      android:text="Cabeza" android:textSize="8sp"/>
+      android:text="Cabeza" android:textSize="7sp"/>
      <Button android:id="@+id/btnPartHair" android:layout_width="match_parent"
-      android:layout_height="40dp" android:minWidth="0dp" android:minHeight="0dp"
+      android:layout_height="34dp" android:minWidth="0dp" android:minHeight="0dp"
       android:insetTop="0dp" android:insetBottom="0dp" android:padding="0dp"
-      android:text="Pelo" android:textSize="8sp"/>
+      android:text="Pelo" android:textSize="7sp"/>
      <Button android:id="@+id/btnPartFace" android:layout_width="match_parent"
-      android:layout_height="40dp" android:minWidth="0dp" android:minHeight="0dp"
+      android:layout_height="34dp" android:minWidth="0dp" android:minHeight="0dp"
       android:insetTop="0dp" android:insetBottom="0dp" android:padding="0dp"
-      android:text="Cara" android:textSize="8sp"/>
+      android:text="Cara" android:textSize="7sp"/>
      <Button android:id="@+id/btnPartChest" android:layout_width="match_parent"
-      android:layout_height="40dp" android:minWidth="0dp" android:minHeight="0dp"
+      android:layout_height="34dp" android:minWidth="0dp" android:minHeight="0dp"
       android:insetTop="0dp" android:insetBottom="0dp" android:padding="0dp"
-      android:text="Pecho" android:textSize="8sp"/>
+      android:text="Pecho" android:textSize="7sp"/>
      <Button android:id="@+id/btnPartArms" android:layout_width="match_parent"
-      android:layout_height="40dp" android:minWidth="0dp" android:minHeight="0dp"
+      android:layout_height="34dp" android:minWidth="0dp" android:minHeight="0dp"
       android:insetTop="0dp" android:insetBottom="0dp" android:padding="0dp"
-      android:text="Brazos" android:textSize="8sp"/>
+      android:text="Brazos" android:textSize="7sp"/>
      <Button android:id="@+id/btnPartHands" android:layout_width="match_parent"
-      android:layout_height="40dp" android:minWidth="0dp" android:minHeight="0dp"
+      android:layout_height="34dp" android:minWidth="0dp" android:minHeight="0dp"
       android:insetTop="0dp" android:insetBottom="0dp" android:padding="0dp"
-      android:text="Manos" android:textSize="8sp"/>
+      android:text="Manos" android:textSize="7sp"/>
      <Button android:id="@+id/btnPartLegs" android:layout_width="match_parent"
-      android:layout_height="40dp" android:minWidth="0dp" android:minHeight="0dp"
+      android:layout_height="34dp" android:minWidth="0dp" android:minHeight="0dp"
       android:insetTop="0dp" android:insetBottom="0dp" android:padding="0dp"
-      android:text="Piernas" android:textSize="8sp"/>
+      android:text="Piernas" android:textSize="7sp"/>
      <Button android:id="@+id/btnPartShoes" android:layout_width="match_parent"
-      android:layout_height="40dp" android:minWidth="0dp" android:minHeight="0dp"
+      android:layout_height="34dp" android:minWidth="0dp" android:minHeight="0dp"
       android:insetTop="0dp" android:insetBottom="0dp" android:padding="0dp"
-      android:text="Zapatos" android:textSize="8sp"/>
+      android:text="Zapatos" android:textSize="7sp"/>
      <Button android:id="@+id/btnFillPart" android:layout_width="match_parent"
-      android:layout_height="44dp" android:minWidth="0dp" android:minHeight="0dp"
+      android:layout_height="36dp" android:minWidth="0dp" android:minHeight="0dp"
       android:insetTop="0dp" android:insetBottom="0dp" android:padding="0dp"
-      android:text="Rellenar\nparte" android:textSize="8sp"
+      android:text="▧ Rellenar" android:textSize="7sp"
       android:backgroundTint="#0D47A1"/>
     </LinearLayout>
    </ScrollView>
@@ -85,33 +85,33 @@
     android:layout_height="match_parent" android:layout_weight="1"
     android:layout_marginHorizontal="3dp"/>
 
-   <LinearLayout android:layout_width="60dp" android:layout_height="match_parent"
+   <LinearLayout android:layout_width="56dp" android:layout_height="match_parent"
     android:orientation="vertical" android:gravity="center_horizontal"
     android:background="#0A192B" android:padding="2dp">
     <Button android:id="@+id/btnBrush" android:layout_width="match_parent"
-     android:layout_height="48dp" android:minWidth="0dp" android:minHeight="0dp"
+     android:layout_height="38dp" android:minWidth="0dp" android:minHeight="0dp"
      android:insetTop="0dp" android:insetBottom="0dp" android:padding="0dp"
-     android:text="✎\nPincel" android:textSize="8sp" android:backgroundTint="#1565C0"/>
+     android:text="✎ Pincel" android:textSize="7sp" android:backgroundTint="#1565C0"/>
     <Button android:id="@+id/btnBucket" android:layout_width="match_parent"
-     android:layout_height="48dp" android:minWidth="0dp" android:minHeight="0dp"
+     android:layout_height="38dp" android:minWidth="0dp" android:minHeight="0dp"
      android:insetTop="0dp" android:insetBottom="0dp" android:padding="0dp"
-     android:text="▣\nCubeta" android:textSize="8sp" android:backgroundTint="#1976D2"/>
+     android:text="▣ Cubeta" android:textSize="7sp" android:backgroundTint="#1976D2"/>
     <Button android:id="@+id/btnPicker" android:layout_width="match_parent"
-     android:layout_height="48dp" android:minWidth="0dp" android:minHeight="0dp"
+     android:layout_height="38dp" android:minWidth="0dp" android:minHeight="0dp"
      android:insetTop="0dp" android:insetBottom="0dp" android:padding="0dp"
-     android:text="⌖\nGotero" android:textSize="8sp" android:backgroundTint="#0288D1"/>
+     android:text="⌖ Gotero" android:textSize="7sp" android:backgroundTint="#0288D1"/>
     <Button android:id="@+id/btnEraser" android:layout_width="match_parent"
-     android:layout_height="48dp" android:minWidth="0dp" android:minHeight="0dp"
+     android:layout_height="38dp" android:minWidth="0dp" android:minHeight="0dp"
      android:insetTop="0dp" android:insetBottom="0dp" android:padding="0dp"
-     android:text="⌫\nBorrar" android:textSize="8sp" android:backgroundTint="#263B52"/>
+     android:text="⌫ Borrar" android:textSize="7sp" android:backgroundTint="#263B52"/>
     <Button android:id="@+id/btnResetCam" android:layout_width="match_parent"
-     android:layout_height="48dp" android:minWidth="0dp" android:minHeight="0dp"
+     android:layout_height="38dp" android:minWidth="0dp" android:minHeight="0dp"
      android:insetTop="0dp" android:insetBottom="0dp" android:padding="0dp"
-     android:text="⟳\nVista" android:textSize="8sp" android:backgroundTint="#263B52"/>
+     android:text="⟳ Vista" android:textSize="7sp" android:backgroundTint="#263B52"/>
     <Button android:id="@+id/btnUniversalWheel" android:layout_width="match_parent"
-     android:layout_height="48dp" android:minWidth="0dp" android:minHeight="0dp"
+     android:layout_height="38dp" android:minWidth="0dp" android:minHeight="0dp"
      android:insetTop="0dp" android:insetBottom="0dp" android:padding="0dp"
-     android:text="◉\nColor" android:textSize="8sp" android:backgroundTint="#0277BD"/>
+     android:text="◉ Color" android:textSize="7sp" android:backgroundTint="#0277BD"/>
    </LinearLayout>
   </LinearLayout>
 
@@ -142,10 +142,10 @@
    android:paddingTop="7dp" android:text="PALETA DE COLORES"
    android:textColor="#81D4FA" android:textSize="10sp" android:textStyle="bold"/>
   <HorizontalScrollView android:id="@+id/hsvPaletteScroll"
-   android:layout_width="match_parent" android:layout_height="42dp"
+   android:layout_width="match_parent" android:layout_height="36dp"
    android:scrollbars="none"/>
   <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-   android:paddingTop="6dp" android:text="TEXTURA 2D"
+   android:paddingTop="6dp" android:text="✦ TEXTURA 2D"
    android:textColor="#81D4FA" android:textSize="10sp" android:textStyle="bold"/>
   <com.forjastudios.skinstudio.SkinTextureEditorView
    android:id="@+id/textureEditor" android:layout_width="match_parent"
