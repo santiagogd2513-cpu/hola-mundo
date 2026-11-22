@@ -83,6 +83,7 @@ public class MainActivity extends AppCompatActivity {
 
         Button fill = findViewById(R.id.btnFillPart);
         if (fill != null) fill.setOnClickListener(v -> {
+            skinModel.setEraserMode(false);
             skinModel.fillPart(skinModel.getSelectedPart());
             setToolDescription("Rellenar parte");
             refreshViews();
