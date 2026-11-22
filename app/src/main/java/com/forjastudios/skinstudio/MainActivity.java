@@ -153,6 +153,7 @@ public class MainActivity extends AppCompatActivity {
         if (eraser != null) eraser.setOnClickListener(v -> {
             skinModel.setEraserMode(true);
             textureEditor.setTool(SkinTextureEditorView.Tool.BRUSH);
+            viewport3D.setTool(SkinTextureEditorView.Tool.BRUSH);
             setToolDescription("Borrador");
         });
         if (reset != null) reset.setOnClickListener(v -> viewport3D.resetCamera());
@@ -170,6 +171,7 @@ public class MainActivity extends AppCompatActivity {
     private void selectTool(SkinTextureEditorView.Tool tool, String name) {
         skinModel.setEraserMode(false);
         textureEditor.setTool(tool);
+        viewport3D.setTool(tool);
         setToolDescription(name);
     }
 
