@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -103,6 +104,12 @@ fun AppRoot(vm: AppViewModel) {
             FolderPick.AWC -> if (uri != null) vm.exportAwcToFolder(uri)
             FolderPick.IMPORT -> if (uri != null) vm.importFolder(uri)
             FolderPick.EXPORT -> {
+                val many = vm.pendingExportMany
+                vm.pendingExportMany = null
+                if (many != null) {
+                    if (uri != null) vm.exportManyToFolder(many, uri)
+                    return@rememberLauncherForActivityResult
+                }
                 val e = vm.pendingExport
                 vm.pendingExport = null
                 if (uri != null && e != null) vm.exportToFolder(e, uri)
@@ -131,6 +138,11 @@ fun AppRoot(vm: AppViewModel) {
                 } else {
                     createFile.launch(vm.suggestedName(e))
                 }
+            },
+            exportMany = { list ->
+                vm.pendingExportMany = list
+                folderPick = FolderPick.EXPORT
+                pickFolder.launch(null)
             },
             exportFolder = { d ->
                 vm.pendingExport = d
@@ -230,6 +242,7 @@ fun AppRoot(vm: AppViewModel) {
 class BrowserActions(
     val exportFile: (RpfFileEntry) -> Unit,
     val exportFolder: (RpfDirectory) -> Unit,
+    val exportMany: (List<RpfEntry>) -> Unit,
     val importFiles: () -> Unit,
     val importFolder: () -> Unit,
     val replaceFile: (RpfFileEntry) -> Unit,
@@ -322,7 +335,7 @@ private fun HomeScreen(vm: AppViewModel, onOpenRpf: () -> Unit, onLoadKey: () ->
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
             ) {
                 Text(
-                    "Mantén pulsado un archivo o carpeta para seleccionarlo (renombrar, borrar). " +
+                    "Mantén pulsado un archivo o carpeta para seleccionarlo (copiar al móvil, renombrar, borrar). " +
                         "En el menú ⋮ puedes importar, crear carpetas y guardar. " +
                         "Los cambios no se escriben hasta que pulsas «Guardar».",
                     modifier = Modifier.padding(16.dp),
@@ -362,6 +375,11 @@ private fun BrowserScreen(vm: AppViewModel, actions: BrowserActions) {
                     navigationIcon = { IconButton(onClick = { vm.marked.clear() }) { Icon(Icons.Filled.Close, "Quitar selección") } },
                     title = { Text("${vm.marked.size} seleccionado${if (vm.marked.size == 1) "" else "s"}") },
                     actions = {
+                        TextButton(onClick = { actions.exportMany(vm.marked.toList()) }) {
+                            Icon(Icons.Filled.Share, null)
+                            Spacer(Modifier.width(4.dp))
+                            Text("Copiar al móvil")
+                        }
                         if (vm.marked.size == 1) {
                             IconButton(onClick = { vm.renaming = vm.marked[0] }) { Icon(Icons.Filled.Edit, "Renombrar") }
                         }

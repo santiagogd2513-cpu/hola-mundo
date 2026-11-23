@@ -131,6 +131,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Lo que se exportará cuando el usuario elija destino en el selector de Android. */
     var pendingExport: RpfEntry? = null
 
+    /** Selección que se copiará al móvil cuando el usuario elija carpeta. */
+    var pendingExportMany: List<RpfEntry>? = null
+
     /** Archivo a reemplazar cuando el usuario elija el nuevo. */
     var pendingReplace: RpfFileEntry? = null
 
@@ -408,6 +411,69 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                                 if (errors.size > 15) "\n…y ${errors.size - 15} más" else ""
                         }
                     }
+                }
+            }
+        }
+    }
+
+    /** Copia varios archivos y carpetas seleccionados a una carpeta del móvil (manteniendo la estructura). */
+    fun exportManyToFolder(entries: List<RpfEntry>, treeUri: Uri) {
+        val a = current?.archive ?: return
+        if (entries.isEmpty()) return
+        runTask("Copiando al móvil") {
+            val scope = coroutineContext
+            val target = DocumentTreeTarget(ctx, treeUri)
+            val ex = exporter(a)
+            val allFiles = entries.flatMap { if (it is RpfDirectory) it.allFiles() else listOf(it as RpfFileEntry) }
+            val totalBytes = allFiles.sumOf { it.size }
+            val totalFiles = allFiles.size
+            var doneBytes = 0L
+            var doneFiles = 0
+            val errors = ArrayList<Pair<String, String>>()
+            for (e in entries) {
+                when (e) {
+                    is RpfDirectory -> {
+                        val baseBytes = doneBytes
+                        val baseFiles = doneFiles
+                        errors += ex.exportDirectory(e, target) { p: ExportProgress ->
+                            scope.ensureActive()
+                            progress(
+                                "Copiando ${minOf(baseFiles + p.doneFiles + 1, totalFiles)} de $totalFiles",
+                                p.currentName,
+                                if (totalBytes > 0) (baseBytes + p.doneBytes).toFloat() / totalBytes else null,
+                            )
+                        }
+                        doneBytes = baseBytes + e.allFiles().sumOf { it.size }
+                        doneFiles = baseFiles + e.allFiles().size
+                    }
+                    is RpfFileEntry -> {
+                        val base = doneBytes
+                        try {
+                            ex.exportTo(e, target) { n ->
+                                scope.ensureActive()
+                                progress(
+                                    "Copiando ${minOf(doneFiles + 1, totalFiles)} de $totalFiles",
+                                    e.name,
+                                    if (totalBytes > 0) (base + n).toFloat() / totalBytes else null,
+                                )
+                            }
+                        } catch (ce: CancellationException) {
+                            throw ce
+                        } catch (x: Exception) {
+                            errors.add(e.path to (x.message ?: x.javaClass.simpleName))
+                        }
+                        doneBytes = base + e.size
+                        doneFiles++
+                    }
+                }
+            }
+            withContext(Dispatchers.Main) {
+                marked.clear()
+                message = if (errors.isEmpty()) {
+                    "Copiados $totalFiles archivo${if (totalFiles == 1) "" else "s"} al móvil."
+                } else {
+                    "Copiados ${totalFiles - errors.size} de $totalFiles archivos. Fallaron:\n" +
+                        errors.take(15).joinToString("\n") { "• ${it.first}: ${it.second}" }
                 }
             }
         }
