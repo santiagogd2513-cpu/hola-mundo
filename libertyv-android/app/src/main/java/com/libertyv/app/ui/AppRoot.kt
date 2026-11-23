@@ -232,11 +232,11 @@ private fun HomeScreen(vm: AppViewModel, onOpenRpf: () -> Unit, onLoadKey: () ->
                         Row(
                             Modifier
                                 .fillMaxWidth()
-                                .selectable(selected = vm.resourceMode == m, onClick = { vm.setResourceMode(m) })
+                                .selectable(selected = vm.resourceMode == m, onClick = { vm.chooseResourceMode(m) })
                                 .padding(vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            RadioButton(selected = vm.resourceMode == m, onClick = { vm.setResourceMode(m) })
+                            RadioButton(selected = vm.resourceMode == m, onClick = { vm.chooseResourceMode(m) })
                             Column {
                                 Text(m.label)
                                 Text(m.description, style = MaterialTheme.typography.bodySmall)

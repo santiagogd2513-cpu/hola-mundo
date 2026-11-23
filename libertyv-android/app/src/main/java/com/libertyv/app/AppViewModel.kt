@@ -82,7 +82,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     val current: OpenArchive? get() = stack.lastOrNull()
 
-    fun setResourceMode(m: ResourceExportMode) {
+    fun chooseResourceMode(m: ResourceExportMode) {
         resourceMode = m
         settings.resourceMode = m
     }
