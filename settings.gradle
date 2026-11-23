@@ -1,11 +1,7 @@
-pluginManagement {
-    repositories {
-        gradlePluginPortal()
-        maven {
-            name = 'MinecraftForge'
-            url = 'https://maven.minecraftforge.net/'
-        }
-    }
+pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories { google(); mavenCentral() }
 }
-
-rootProject.name = 'BD-Acustica-Ultra-Complemento-7.39.3'
+rootProject.name = "LibertyUV-Android"
+include(":app")

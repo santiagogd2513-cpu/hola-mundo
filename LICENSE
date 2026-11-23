@@ -1,0 +1,6 @@
+SPDX-License-Identifier: GPL-3.0-or-later
+
+This project is distributed under the GNU General Public License version 3.0 or later.
+Full license text: https://www.gnu.org/licenses/gpl-3.0.html
+
+The published LibertyV RPF7 source identifies itself as GPL-3.0-or-later. This Android adaptation is a separate implementation and does not bundle the original Windows executable, DLLs, or key files.
