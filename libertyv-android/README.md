@@ -4,7 +4,7 @@ Versión para Android de **LibertyV r47**, el explorador de archivos RPF de Gran
 para **Xbox 360** y **PlayStation 3**. Es una reescritura en Kotlin, porque el original era un
 programa de Windows (.NET con ventanas WinForms y DLL nativas) que no puede funcionar en Android.
 
-## Fase 1 (esta versión): ver y extraer
+## Fase 1: ver y extraer
 
 - Cargar la clave (`key_xbox360.dat` / `key_ps3.dat`). Se comprueba por MD5 igual que el original
   y se guarda dentro de la app. **La app no incluye ninguna clave.**
@@ -15,11 +15,22 @@ programa de Windows (.NET con ventanas WinForms y DLL nativas) que no puede func
 - Audio `.awc`: escuchar las pistas y exportarlas a `.wav`.
 - Ver el contenido de un archivo (texto o hexadecimal).
 
-## Fase 2 (pendiente): editar y guardar
+## Fase 2: editar y guardar
 
-Importar, reemplazar, borrar y guardar el RPF. En Xbox 360 los archivos se tendrán que guardar
-**comprimidos** (el juego no carga archivos sin comprimir). El compresor LZX ya está hecho y probado
-(`core/.../LzxEncoder.kt`).
+- **Importar archivos** o una **carpeta entera** en la carpeta actual (menú ⋮). Para cada archivo
+  se elige añadir/reemplazar u omitir y si se comprime. Por defecto se sigue la regla de LibertyV:
+  se comprime todo salvo `.rpf`, `.awc`, `.bik`, `.xpm`, `.cpm` y archivos de 256 bytes o menos.
+- Los archivos **RSC7** (exportados en modo RSC7) se detectan y se guardan como recursos.
+- **Reemplazar** un archivo, **renombrar**, **borrar** (mantén pulsado para seleccionar varios)
+  y **crear carpetas**.
+- **Guardar** encima del original o **Guardar como** otro archivo. Antes de escribir, el RPF nuevo
+  se vuelve a abrir y se comprueba que cada archivo importado se lee igual (descifrado y
+  descomprimido). Si algo no cuadra, no se guarda.
+- **RPF dentro de RPF**: se editan y con «Aplicar cambios al RPF padre» se meten en el padre.
+
+Igual que LibertyV: los archivos que no cambias se copian byte a byte; los nuevos comprimidos
+se comprimen (LZX en Xbox 360, Deflate en PS3) **y se cifran**; los scripts (`.xsc`/`.csc`)
+siempre van cifrados; los nombres de cada carpeta se guardan ordenados.
 
 ## Cómo está hecho
 

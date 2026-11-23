@@ -155,3 +155,39 @@ internal fun le32(b: ByteArray, o: Int): Int =
 internal fun be16(b: ByteArray, o: Int): Int = ((b[o].toInt() and 0xFF) shl 8) or (b[o + 1].toInt() and 0xFF)
 
 internal fun le16(b: ByteArray, o: Int): Int = (b[o].toInt() and 0xFF) or ((b[o + 1].toInt() and 0xFF) shl 8)
+
+/**
+ * Archivo (o parte de él) en disco que solo se abre mientras se lee.
+ * Sirve para miles de archivos importados sin agotar los descriptores abiertos.
+ */
+class FileSource(
+    val file: java.io.File,
+    private val offset: Long = 0,
+    length: Long = file.length() - offset,
+) : DataSource {
+    override val size: Long = length
+
+    override fun read(pos: Long, buf: ByteArray, off: Int, len: Int): Int {
+        if (pos >= size) return -1
+        java.io.RandomAccessFile(file, "r").use { raf ->
+            raf.seek(offset + pos)
+            return raf.read(buf, off, minOf(len.toLong(), size - pos).toInt())
+        }
+    }
+
+    override fun slice(offset: Long, length: Long): DataSource {
+        if (offset < 0 || length < 0 || offset + length > size) throw IOException("Rango fuera del archivo")
+        return FileSource(file, this.offset + offset, length)
+    }
+
+    override fun openStream(): InputStream {
+        val fis = java.io.FileInputStream(file)
+        var skipped = 0L
+        while (skipped < offset) {
+            val s = fis.skip(offset - skipped)
+            if (s <= 0) break
+            skipped += s
+        }
+        return com.libertyv.core.rpf.LimitedInputStream(java.io.BufferedInputStream(fis, 64 * 1024), size)
+    }
+}

@@ -25,7 +25,7 @@ class RpfException(msg: String) : IOException(msg)
 class Rpf7Archive private constructor(
     val source: DataSource,
     val platform: ConsolePlatform,
-    private val aes: AesEcb,
+    internal val aes: AesEcb,
     val name: String,
 ) : Closeable {
     lateinit var root: RpfDirectory
@@ -152,22 +152,115 @@ class Rpf7Archive private constructor(
         if (offset + size > source.size) throw RpfException("Datos fuera del archivo: $name")
     }
 
-    /** Bytes tal como están guardados dentro del RPF. */
-    fun openStored(entry: RpfFileEntry): InputStream = source.slice(entry.offset, entry.storedSize).openStream()
+    /** true si hay cambios sin guardar. */
+    var isModified = false
+        private set
+
+    /** Bytes tal como están guardados dentro del RPF (no vale para archivos importados sin guardar). */
+    fun openStored(entry: RpfFileEntry): InputStream {
+        if (entry.isImported) throw RpfException("“${entry.name}” es nuevo: guarda el RPF para tenerlo comprimido")
+        return source.slice(entry.offset, entry.storedSize).openStream()
+    }
 
     /** Si el archivo está guardado sin comprimir ni cifrar, sus datos directamente (útil para RPF dentro de RPF). */
     fun plainSlice(entry: RpfFileEntry): DataSource? {
         if (entry is RpfRegularFile && !entry.isCompressed && !entry.isEncrypted) {
-            return source.slice(entry.offset, entry.storedSize)
+            return entry.imported ?: source.slice(entry.offset, entry.storedSize)
         }
+        if (entry is RpfRegularFile && entry.imported != null) return entry.imported
         return null
+    }
+
+    // ---------------------------------------------------------------- edición
+
+    private fun checkName(dir: RpfDirectory, name: String, except: RpfEntry? = null) {
+        if (name.isBlank()) throw RpfException("El nombre no puede estar vacío")
+        if (name.any { it == '/' || it == '\\' || it.code < 32 || it.code > 126 }) {
+            throw RpfException("El nombre “$name” tiene caracteres no permitidos (solo letras sin tilde, números y símbolos básicos)")
+        }
+        if (name.length > 255) throw RpfException("El nombre es demasiado largo")
+        val other = dir.get(name)
+        if (other != null && other !== except) throw RpfException("Ya existe “$name” en esta carpeta")
+    }
+
+    fun createFolder(dir: RpfDirectory, name: String): RpfDirectory {
+        checkName(dir, name)
+        val d = RpfDirectory(name, emptyList())
+        dir.add(d)
+        isModified = true
+        return d
+    }
+
+    /** Crea (si hace falta) las carpetas de [path] ("a/b") dentro de [dir]. */
+    fun ensureFolders(dir: RpfDirectory, path: String): RpfDirectory {
+        var cur = dir
+        for (part in path.split('/').filter { it.isNotEmpty() }) {
+            cur = when (val e = cur.get(part)) {
+                null -> createFolder(cur, part)
+                is RpfDirectory -> e
+                else -> throw RpfException("“${e.path}” es un archivo, no una carpeta")
+            }
+        }
+        return cur
+    }
+
+    fun rename(entry: RpfEntry, newName: String) {
+        val dir = entry.parent ?: throw RpfException("No se puede renombrar la carpeta raíz")
+        if (newName == entry.name) return
+        checkName(dir, newName, entry)
+        entry.name = newName
+        dir.invalidate()
+        isModified = true
+    }
+
+    fun delete(entry: RpfEntry) {
+        val dir = entry.parent ?: throw RpfException("No se puede borrar la carpeta raíz")
+        dir.remove(entry)
+        isModified = true
+    }
+
+    /**
+     * Añade un archivo nuevo o reemplaza el que tenga el mismo nombre.
+     * Si [data] es un RSC7 válido se guarda como recurso; si no, como archivo normal.
+     * [compress] = null aplica la regla de LibertyV.
+     */
+    fun putFile(dir: RpfDirectory, name: String, data: DataSource, compress: Boolean? = null): RpfFileEntry {
+        val existing = dir.get(name)
+        if (existing is RpfDirectory) throw RpfException("Ya existe una carpeta llamada “$name”")
+        checkName(dir, name, existing)
+        val rsc = RpfResource.parseRsc7(data, platform)
+        if (existing is RpfResource && rsc == null) {
+            throw RpfException(
+                "“$name” es un recurso: para reemplazarlo hace falta el archivo en formato RSC7 " +
+                    "(expórtalo con el modo RSC7 y edita ese archivo).",
+            )
+        }
+        val entry: RpfFileEntry = if (rsc != null) {
+            RpfResource(name, -1, -1, rsc.first, rsc.second, platform, data.slice(16, data.size - 16))
+        } else {
+            RpfRegularFile.imported(name, data, compress ?: RpfRegularFile.shouldCompress(name, data.size))
+        }
+        if (existing != null) dir.remove(existing)
+        dir.add(entry)
+        isModified = true
+        return entry
+    }
+
+    /** Marca el archivo como guardado (lo usa el escritor al terminar). */
+    internal fun markSaved() {
+        isModified = false
     }
 
     /**
      * Contenido ya extraído (descifrado y descomprimido).
      * Para un recurso son las páginas system + graphics seguidas.
      */
-    fun openContent(entry: RpfFileEntry): InputStream = when (entry) {
+    fun openContent(entry: RpfFileEntry): InputStream {
+        entry.imported?.let { return it.openStream() }
+        return openOriginalContent(entry)
+    }
+
+    private fun openOriginalContent(entry: RpfFileEntry): InputStream = when (entry) {
         is RpfRegularFile -> {
             val stored = openStored(entry)
             if (!entry.isCompressed) {
@@ -201,8 +294,9 @@ class Rpf7Archive private constructor(
     fun openRsc7(entry: RpfResource): InputStream =
         SequenceInputStream(ByteArrayInputStream(rsc7Header(entry)), openContent(entry))
 
-    fun copyStored(entry: RpfFileEntry, out: OutputStream) {
-        openStored(entry).use { it.copyTo(out, 64 * 1024) }
+    /** Escribe los bytes del archivo tal como irían dentro del RPF (comprimidos/cifrados). */
+    fun writeStored(entry: RpfFileEntry, out: OutputStream, progress: ((Long) -> Unit)? = null) {
+        Rpf7Writer.writeEntryData(this, entry, out, progress)
     }
 
     override fun close() = source.close()

@@ -3,8 +3,11 @@ package com.libertyv.app.ui
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -23,12 +26,18 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
@@ -44,6 +53,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -71,9 +81,11 @@ import com.libertyv.core.rpf.RpfFileEntry
 import com.libertyv.core.rpf.RpfRegularFile
 import com.libertyv.core.rpf.RpfResource
 
+private enum class FolderPick { EXPORT, AWC, IMPORT }
+
 @Composable
 fun AppRoot(vm: AppViewModel) {
-    var pendingAwcExport by remember { mutableStateOf(false) }
+    var folderPick by remember { mutableStateOf(FolderPick.EXPORT) }
 
     val openRpf = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) vm.openRpf(uri)
@@ -87,26 +99,54 @@ fun AppRoot(vm: AppViewModel) {
         if (uri != null && e is RpfFileEntry) vm.exportFileTo(e, uri)
     }
     val pickFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
-        if (pendingAwcExport) {
-            pendingAwcExport = false
-            if (uri != null) vm.exportAwcToFolder(uri)
-            return@rememberLauncherForActivityResult
+        when (folderPick) {
+            FolderPick.AWC -> if (uri != null) vm.exportAwcToFolder(uri)
+            FolderPick.IMPORT -> if (uri != null) vm.importFolder(uri)
+            FolderPick.EXPORT -> {
+                val e = vm.pendingExport
+                vm.pendingExport = null
+                if (uri != null && e != null) vm.exportToFolder(e, uri)
+            }
         }
-        val e = vm.pendingExport
-        vm.pendingExport = null
-        if (uri != null && e != null) vm.exportToFolder(e, uri)
+    }
+    val importFiles = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+        vm.importFiles(uris)
+    }
+    val replaceWith = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        val e = vm.pendingReplace
+        vm.pendingReplace = null
+        if (uri != null && e != null) vm.replaceFile(e, uri)
+    }
+    val saveAs = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
+        if (uri != null) vm.saveAs(uri)
     }
 
     val actions = remember(vm) {
         BrowserActions(
             exportFile = { e ->
                 vm.pendingExport = e
-                if (vm.needsFolder(e)) pickFolder.launch(null) else createFile.launch(vm.suggestedName(e))
+                if (vm.needsFolder(e)) {
+                    folderPick = FolderPick.EXPORT
+                    pickFolder.launch(null)
+                } else {
+                    createFile.launch(vm.suggestedName(e))
+                }
             },
             exportFolder = { d ->
                 vm.pendingExport = d
+                folderPick = FolderPick.EXPORT
                 pickFolder.launch(null)
             },
+            importFiles = { importFiles.launch(arrayOf("*/*")) },
+            importFolder = {
+                folderPick = FolderPick.IMPORT
+                pickFolder.launch(null)
+            },
+            replaceFile = { e ->
+                vm.pendingReplace = e
+                replaceWith.launch(arrayOf("*/*"))
+            },
+            saveAs = { name -> saveAs.launch(name) },
         )
     }
 
@@ -124,12 +164,34 @@ fun AppRoot(vm: AppViewModel) {
 
     vm.awcState?.let { st ->
         AwcDialog(vm, st, onExportAll = {
-            pendingAwcExport = true
+            folderPick = FolderPick.AWC
             pickFolder.launch(null)
         })
     }
 
     vm.textPreview?.let { (name, text) -> PreviewDialog(name, text) { vm.textPreview = null } }
+
+    vm.importPlan?.let { ImportDialog(vm, it) }
+    vm.renaming?.let { e ->
+        NameDialog("Renombrar", e.name, "Renombrar", onDismiss = { vm.renaming = null }) { vm.rename(e, it) }
+    }
+    if (vm.creatingFolder) {
+        NameDialog("Nueva carpeta", "", "Crear", onDismiss = { vm.creatingFolder = false }) { vm.createFolder(it) }
+    }
+    vm.confirm?.let { c ->
+        AlertDialog(
+            onDismissRequest = { vm.confirm = null },
+            title = { Text(c.title) },
+            text = { Text(c.text) },
+            confirmButton = {
+                TextButton(onClick = {
+                    vm.confirm = null
+                    c.onConfirm()
+                }) { Text(c.confirmLabel) }
+            },
+            dismissButton = { TextButton(onClick = { vm.confirm = null }) { Text("Cancelar") } },
+        )
+    }
 
     vm.message?.let { msg ->
         AlertDialog(
@@ -168,6 +230,10 @@ fun AppRoot(vm: AppViewModel) {
 class BrowserActions(
     val exportFile: (RpfFileEntry) -> Unit,
     val exportFolder: (RpfDirectory) -> Unit,
+    val importFiles: () -> Unit,
+    val importFolder: () -> Unit,
+    val replaceFile: (RpfFileEntry) -> Unit,
+    val saveAs: (String) -> Unit,
 )
 
 // ---------------------------------------------------------------- inicio
@@ -185,7 +251,7 @@ private fun HomeScreen(vm: AppViewModel, onOpenRpf: () -> Unit, onLoadKey: () ->
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(
-                "Explorador de archivos RPF de Grand Theft Auto V para PlayStation 3 y Xbox 360.",
+                "Explorador y editor de archivos RPF de Grand Theft Auto V para PlayStation 3 y Xbox 360.",
                 style = MaterialTheme.typography.bodyLarge,
             )
 
@@ -243,6 +309,11 @@ private fun HomeScreen(vm: AppViewModel, onOpenRpf: () -> Unit, onLoadKey: () ->
                             }
                         }
                     }
+                    Text(
+                        "Para editar un recurso y volver a meterlo, expórtalo en modo RSC7.",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
                 }
             }
 
@@ -251,7 +322,9 @@ private fun HomeScreen(vm: AppViewModel, onOpenRpf: () -> Unit, onLoadKey: () ->
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
             ) {
                 Text(
-                    "Fase 1: ver, extraer y escuchar audio. La edición (importar, reemplazar, borrar y guardar) llegará en la fase 2.",
+                    "Mantén pulsado un archivo o carpeta para seleccionarlo (renombrar, borrar). " +
+                        "En el menú ⋮ puedes importar, crear carpetas y guardar. " +
+                        "Los cambios no se escriben hasta que pulsas «Guardar».",
                     modifier = Modifier.padding(16.dp),
                     style = MaterialTheme.typography.bodySmall,
                 )
@@ -267,10 +340,14 @@ private fun HomeScreen(vm: AppViewModel, onOpenRpf: () -> Unit, onLoadKey: () ->
 private fun BrowserScreen(vm: AppViewModel, actions: BrowserActions) {
     val dir = vm.currentDir ?: return
     val open = vm.current ?: return
+    val version = vm.treeVersion
     var searching by remember { mutableStateOf(false) }
+    var menu by remember { mutableStateOf(false) }
+    val selecting = vm.marked.isNotEmpty()
+    val modified = vm.isModified
 
     BackHandler {
-        if (searching && vm.search.isEmpty()) {
+        if (searching && vm.search.isEmpty() && !selecting) {
             searching = false
         } else {
             vm.back()
@@ -279,28 +356,76 @@ private fun BrowserScreen(vm: AppViewModel, actions: BrowserActions) {
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                navigationIcon = {
-                    IconButton(onClick = { vm.back() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Atrás") }
-                },
-                title = {
-                    Column {
-                        Text(open.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(
-                            "${open.archive.platform.displayName} · /${dir.path.takeIf { dir.parent != null } ?: ""}",
-                            style = MaterialTheme.typography.bodySmall,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { searching = !searching; if (!searching) vm.search = "" }) {
-                        Icon(Icons.Filled.Search, "Buscar")
-                    }
-                    IconButton(onClick = { vm.closeAll() }) { Icon(Icons.Filled.Close, "Cerrar RPF") }
-                },
-            )
+            if (selecting) {
+                TopAppBar(
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                    navigationIcon = { IconButton(onClick = { vm.marked.clear() }) { Icon(Icons.Filled.Close, "Quitar selección") } },
+                    title = { Text("${vm.marked.size} seleccionado${if (vm.marked.size == 1) "" else "s"}") },
+                    actions = {
+                        if (vm.marked.size == 1) {
+                            IconButton(onClick = { vm.renaming = vm.marked[0] }) { Icon(Icons.Filled.Edit, "Renombrar") }
+                        }
+                        IconButton(onClick = { vm.askDelete(vm.marked.toList()) }) { Icon(Icons.Filled.Delete, "Borrar") }
+                    },
+                )
+            } else {
+                TopAppBar(
+                    navigationIcon = {
+                        IconButton(onClick = { vm.back() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Atrás") }
+                    },
+                    title = {
+                        Column {
+                            Text((if (modified) "• " else "") + open.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(
+                                (if (modified) "Sin guardar · " else "") +
+                                    "${open.archive.platform.displayName} · /${dir.path.takeIf { dir.parent != null } ?: ""}",
+                                style = MaterialTheme.typography.bodySmall,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    },
+                    actions = {
+                        if (modified) {
+                            IconButton(onClick = { vm.save() }) {
+                                Icon(Icons.Filled.Check, if (open.isNested) "Aplicar al RPF padre" else "Guardar")
+                            }
+                        }
+                        IconButton(onClick = { searching = !searching; if (!searching) vm.search = "" }) {
+                            Icon(Icons.Filled.Search, "Buscar")
+                        }
+                        Box {
+                            IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, "Más opciones") }
+                            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                                DropdownMenuItem(text = { Text("Importar archivos…") }, onClick = { menu = false; actions.importFiles() })
+                                DropdownMenuItem(text = { Text("Importar carpeta…") }, onClick = { menu = false; actions.importFolder() })
+                                DropdownMenuItem(text = { Text("Nueva carpeta") }, onClick = { menu = false; vm.creatingFolder = true })
+                                HorizontalDivider()
+                                if (open.isNested) {
+                                    DropdownMenuItem(
+                                        text = { Text("Aplicar cambios al RPF padre") },
+                                        enabled = modified,
+                                        onClick = { menu = false; vm.applyToParent() },
+                                    )
+                                } else {
+                                    DropdownMenuItem(
+                                        text = { Text("Guardar") },
+                                        enabled = modified && open.uri != null,
+                                        onClick = { menu = false; vm.save() },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Guardar como…") },
+                                        onClick = { menu = false; actions.saveAs(open.title) },
+                                    )
+                                }
+                                HorizontalDivider()
+                                DropdownMenuItem(text = { Text("Exportar esta carpeta…") }, onClick = { menu = false; actions.exportFolder(dir) })
+                                DropdownMenuItem(text = { Text("Cerrar RPF") }, onClick = { menu = false; vm.closeAll() })
+                            }
+                        }
+                    },
+                )
+            }
         },
     ) { pad ->
         Column(
@@ -308,7 +433,7 @@ private fun BrowserScreen(vm: AppViewModel, actions: BrowserActions) {
                 .padding(pad)
                 .fillMaxSize(),
         ) {
-            if (searching) {
+            if (searching && !selecting) {
                 OutlinedTextField(
                     value = vm.search,
                     onValueChange = { vm.search = it },
@@ -322,7 +447,7 @@ private fun BrowserScreen(vm: AppViewModel, actions: BrowserActions) {
             }
 
             val query = vm.search.trim()
-            val entries: List<RpfEntry> = remember(dir, query) {
+            val entries: List<RpfEntry> = remember(dir, query, version) {
                 if (query.isEmpty()) {
                     dir.children
                 } else {
@@ -331,22 +456,12 @@ private fun BrowserScreen(vm: AppViewModel, actions: BrowserActions) {
             }
 
             if (query.isEmpty()) {
-                val files = remember(dir) { dir.allFiles() }
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        "${dir.children.size} elementos · ${files.size} archivos en total · ${formatSize(files.sumOf { it.size })}",
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.weight(1f),
-                    )
-                    OutlinedButton(onClick = { actions.exportFolder(dir) }, enabled = files.isNotEmpty()) {
-                        Text("Exportar carpeta")
-                    }
-                }
+                val files = remember(dir, version) { dir.allFiles() }
+                Text(
+                    "${dir.children.size} elementos · ${files.size} archivos en total · ${formatSize(files.sumOf { it.size })}",
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                )
             } else {
                 Text(
                     if (entries.size >= 1000) "Más de 1000 resultados (se muestran 1000)" else "${entries.size} resultados",
@@ -356,14 +471,30 @@ private fun BrowserScreen(vm: AppViewModel, actions: BrowserActions) {
             }
             HorizontalDivider()
 
+            if (entries.isEmpty() && query.isEmpty()) {
+                Text(
+                    "Carpeta vacía. Usa el menú ⋮ para importar archivos.",
+                    modifier = Modifier.padding(24.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+
             LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
                 items(entries) { e ->
-                    EntryRow(e, showPath = query.isNotEmpty()) {
-                        when (e) {
-                            is RpfDirectory -> vm.enter(e)
-                            is RpfFileEntry -> vm.selected = e
-                        }
-                    }
+                    val isMarked = vm.marked.any { it === e }
+                    EntryRow(
+                        e,
+                        showPath = query.isNotEmpty(),
+                        marked = isMarked,
+                        onClick = {
+                            when {
+                                selecting -> vm.toggleMark(e)
+                                e is RpfDirectory -> vm.enter(e)
+                                e is RpfFileEntry -> vm.selected = e
+                            }
+                        },
+                        onLongClick = { vm.toggleMark(e) },
+                    )
                     HorizontalDivider(Modifier.padding(start = 56.dp))
                 }
             }
@@ -380,16 +511,18 @@ private fun iconFor(e: RpfEntry): String = when {
     else -> "📄"
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun EntryRow(e: RpfEntry, showPath: Boolean, onClick: () -> Unit) {
+private fun EntryRow(e: RpfEntry, showPath: Boolean, marked: Boolean, onClick: () -> Unit, onLongClick: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .background(if (marked) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(iconFor(e), fontSize = 24.sp, modifier = Modifier.size(32.dp))
+        Text(if (marked) "☑️" else iconFor(e), fontSize = 24.sp, modifier = Modifier.size(32.dp))
         Spacer(Modifier.width(8.dp))
         Column(Modifier.weight(1f)) {
             Text(e.name, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Medium)
@@ -400,6 +533,7 @@ private fun EntryRow(e: RpfEntry, showPath: Boolean, onClick: () -> Unit) {
                     if (e is RpfResource) append(" · recurso v${e.version}")
                     if (e is RpfRegularFile && e.isCompressed) append(" · comprimido")
                     if ((e is RpfRegularFile && e.isEncrypted) || (e is RpfResource && e.isEncrypted)) append(" · cifrado")
+                    if (e.isImported) append(" · nuevo")
                 }
             }
             Text(
@@ -407,6 +541,7 @@ private fun EntryRow(e: RpfEntry, showPath: Boolean, onClick: () -> Unit) {
                 style = MaterialTheme.typography.bodySmall,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+                color = if (e is RpfFileEntry && e.isImported) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
@@ -422,6 +557,7 @@ private fun FileSheet(vm: AppViewModel, e: RpfFileEntry, actions: BrowserActions
         Column(
             Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -433,7 +569,7 @@ private fun FileSheet(vm: AppViewModel, e: RpfFileEntry, actions: BrowserActions
             }
             Text(e.path, style = MaterialTheme.typography.bodySmall)
             InfoLine("Tamaño", formatSize(e.size))
-            InfoLine("Ocupa en el RPF", formatSize(e.storedSize))
+            InfoLine("Ocupa en el RPF", if (e.isImported) "se calcula al guardar" else formatSize(e.storedSize))
             when (e) {
                 is RpfRegularFile -> {
                     InfoLine("Comprimido", if (e.isCompressed) "Sí" else "No")
@@ -444,6 +580,9 @@ private fun FileSheet(vm: AppViewModel, e: RpfFileEntry, actions: BrowserActions
                     InfoLine("System / Graphics", "${formatSize(e.systemSize)} / ${formatSize(e.graphicsSize)}")
                     InfoLine("Cifrado", if (e.isEncrypted) "Sí" else "No")
                 }
+            }
+            if (e.isImported) {
+                Text("Archivo nuevo: se escribirá al guardar el RPF.", color = MaterialTheme.colorScheme.tertiary, style = MaterialTheme.typography.bodySmall)
             }
             Spacer(Modifier.height(8.dp))
 
@@ -462,6 +601,19 @@ private fun FileSheet(vm: AppViewModel, e: RpfFileEntry, actions: BrowserActions
             }
             OutlinedButton(onClick = { vm.selected = null; vm.preview(e) }, modifier = Modifier.fillMaxWidth()) {
                 Text("Ver contenido")
+            }
+            HorizontalDivider(Modifier.padding(vertical = 4.dp))
+            Text("Editar", style = MaterialTheme.typography.titleSmall)
+            OutlinedButton(onClick = { vm.selected = null; actions.replaceFile(e) }, modifier = Modifier.fillMaxWidth()) {
+                Text(if (e is RpfResource) "Reemplazar (archivo RSC7)…" else "Reemplazar por otro archivo…")
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = { vm.selected = null; vm.renaming = e }, modifier = Modifier.weight(1f)) {
+                    Text("Renombrar")
+                }
+                OutlinedButton(onClick = { vm.askDelete(listOf(e)) }, modifier = Modifier.weight(1f)) {
+                    Text("Borrar", color = MaterialTheme.colorScheme.error)
+                }
             }
         }
     }

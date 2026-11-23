@@ -40,7 +40,7 @@ class RpfExporter(
             entry is RpfResource && resourceMode == ResourceExportMode.RSC7 ->
                 archive.openRsc7(entry).use { it.copyCount(out, progress = progress) }
             entry is RpfResource && resourceMode == ResourceExportMode.RAW ->
-                archive.openStored(entry).use { it.copyCount(out, progress = progress) }
+                archive.writeStored(entry, out, progress)
             entry is RpfResource && resourceMode == ResourceExportMode.SYS_GFX ->
                 archive.openContent(entry).use { it.copyCount(out, progress = progress) }
             else -> archive.openContent(entry).use { it.copyCount(out, progress = progress) }
