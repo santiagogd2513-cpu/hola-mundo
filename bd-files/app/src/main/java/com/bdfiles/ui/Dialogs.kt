@@ -3,6 +3,9 @@ package com.bdfiles.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.FlowRowScope
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -60,9 +63,26 @@ import com.bdfiles.core.formatSpeed
 import com.bdfiles.ui.theme.BD
 
 /**
+ * Fila de botones de un diálogo. Si no caben en una línea (por ejemplo con el
+ * texto del sistema puesto en grande), bajan a la siguiente en vez de aplastarse
+ * o salirse de la pantalla.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun DialogActions(content: @Composable FlowRowScope.() -> Unit) {
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+        content = content,
+    )
+}
+
+/**
  * Barra de progreso en el centro de la pantalla, con el fondo oscurecido.
  * Enseña qué se está haciendo, la velocidad, el tiempo que lleva y el que falta.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ProgressOverlay(p: OpProgress, onCancel: () -> Unit) {
     Dialog(
@@ -107,7 +127,11 @@ fun ProgressOverlay(p: OpProgress, onCancel: () -> Unit) {
                     GradientProgressBar(p.fraction, p.indeterminate)
                     Spacer(Modifier.height(10.dp))
 
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    FlowRow(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
                         Text(
                             when {
                                 p.totalBytes > 0 -> "${formatSize(p.doneBytes)} / ${formatSize(p.totalBytes)}"
@@ -135,7 +159,11 @@ fun ProgressOverlay(p: OpProgress, onCancel: () -> Unit) {
                     }
 
                     Spacer(Modifier.height(16.dp))
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                    FlowRow(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterHorizontally),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
                         StatBlock("Velocidad", formatSpeed(p.bytesPerSecond), BD.Pink)
                         StatBlock("Llevamos", formatDuration(p.elapsedSeconds), BD.Violet)
                         StatBlock("Falta", if (p.remainingSeconds >= 0) formatDuration(p.remainingSeconds) else "—", BD.Cyan)
@@ -151,6 +179,7 @@ fun ProgressOverlay(p: OpProgress, onCancel: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun StatBlock(label: String, value: String, color: Color) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -211,11 +240,15 @@ fun DeleteDialog(
     onTrash: () -> Unit,
     onDeleteForever: () -> Unit,
 ) {
-    val what = if (items.size == 1) "“${items[0].name}”" else "${items.size} elementos"
+    val what = if (items.size == 1) "“${shortenName(items[0].name)}”" else "${items.size} elementos"
     val carpetas = items.count { it.isDir }
     Dialog(onDismissRequest = onCancel) {
         Surface(shape = RoundedCornerShape(24.dp), color = BD.SurfaceCard) {
-            Column(Modifier.padding(22.dp)) {
+            Column(
+                Modifier
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 18.dp, vertical = 20.dp),
+            ) {
                 Text("¿Qué hacemos con $what?", style = MaterialTheme.typography.titleLarge)
                 Spacer(Modifier.height(8.dp))
                 Text(
@@ -235,13 +268,8 @@ fun DeleteDialog(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(Modifier.height(22.dp))
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
+                DialogActions {
                     TextButton(onClick = onCancel) { Text("Cancelar", color = BD.TextLow) }
-                    Spacer(Modifier.weight(1f))
                     if (canUseTrash) {
                         Button(
                             onClick = onTrash,
@@ -304,10 +332,18 @@ fun InfoDialog(item: FileItem, extra: Map<String, String>, onDismiss: () -> Unit
 
 @Composable
 private fun InfoLine(label: String, value: String) {
-    Row(Modifier.padding(vertical = 3.dp)) {
-        Text(label, Modifier.width(130.dp), style = MaterialTheme.typography.bodyMedium, color = BD.TextLow)
+    // En columna, para que con el texto grande no se corte ni el nombre ni el dato.
+    Column(Modifier.padding(vertical = 4.dp)) {
+        Text(label, style = MaterialTheme.typography.bodySmall, color = BD.TextLow)
         Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
     }
+}
+
+/** Recorta por el medio los nombres larguísimos: "archivo…0000.bin". */
+fun shortenName(name: String, max: Int = 34): String {
+    if (name.length <= max) return name
+    val keep = (max - 1) / 2
+    return name.take(keep) + "…" + name.takeLast(max - 1 - keep)
 }
 
 /** Una opción dentro de una hoja: emoji, texto y descripción. */

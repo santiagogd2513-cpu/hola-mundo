@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
@@ -20,6 +22,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -60,7 +63,15 @@ class MainActivity : ComponentActivity() {
         setContent {
             val dark = vm.prefs.darkMode ?: isSystemInDarkTheme()
             BDFilesTheme(dark = dark) {
-                AppRoot(vm)
+                // Permite achicar un poco la letra solo dentro de la app, sin tocar
+                // el tamaño de texto de todo el móvil.
+                val base = LocalDensity.current
+                val scale = vm.prefs.textScale
+                CompositionLocalProvider(
+                    LocalDensity provides Density(base.density, base.fontScale * scale),
+                ) {
+                    AppRoot(vm)
+                }
             }
         }
     }

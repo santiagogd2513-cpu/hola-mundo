@@ -48,6 +48,15 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("showPathBar", true)
         set(v) = sp.edit().putBoolean("showPathBar", v).apply()
 
+    /**
+     * Escala del texto dentro de la app, sobre la del sistema.
+     * 1.0 = igual que el sistema. Sirve para quien tiene la letra del móvil muy
+     * grande y quiere que en BD Files sea algo más pequeña.
+     */
+    var textScale: Float
+        get() = sp.getFloat("textScale", 1f).coerceIn(0.75f, 1.3f)
+        set(v) = sp.edit().putFloat("textScale", v.coerceIn(0.75f, 1.3f)).apply()
+
     var colorfulIcons: Boolean
         get() = sp.getBoolean("colorfulIcons", true)
         set(v) = sp.edit().putBoolean("colorfulIcons", v).apply()

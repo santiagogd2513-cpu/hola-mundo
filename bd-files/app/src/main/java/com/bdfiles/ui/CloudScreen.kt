@@ -299,8 +299,9 @@ private fun ServerDialog(
             Column(
                 Modifier
                     .fillMaxWidth()
+                    .heightIn(max = 620.dp)
                     .verticalScroll(rememberScrollState())
-                    .padding(20.dp),
+                    .padding(horizontal = 18.dp, vertical = 20.dp),
             ) {
                 Text(
                     if (initial == null) "Servidor FTP nuevo" else "Editar servidor",
@@ -310,14 +311,8 @@ private fun ServerDialog(
 
                 Field("Nombre", name, "Mi Xbox del salón") { name = it }
                 Field("Dirección IP o nombre", host, "192.168.1.50") { host = it }
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Box(Modifier.weight(1f)) {
-                        Field("Puerto", port, "21", keyboard = KeyboardType.Number) { port = it }
-                    }
-                    Box(Modifier.weight(2f)) {
-                        Field("Carpeta de inicio", startPath, "/") { startPath = it }
-                    }
-                }
+                Field("Puerto", port, "21", keyboard = KeyboardType.Number) { port = it }
+                Field("Carpeta de inicio", startPath, "/") { startPath = it }
                 Field("Usuario", user, "") { user = it }
                 Field("Contraseña", pass, "") { pass = it }
 
@@ -454,7 +449,8 @@ private fun ServerDialog(
                 Spacer(Modifier.height(18.dp))
 
                 // Abajo: a la izquierda el tipo de aparato; a la derecha cancelar y aceptar.
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                // Si no caben en una línea (texto grande), bajan solos.
+                DialogActions {
                     Box {
                         OutlinedButton(onClick = { typeMenu = true }, shape = RoundedCornerShape(14.dp)) {
                             Text(
@@ -492,39 +488,38 @@ private fun ServerDialog(
                             }
                         }
                     }
-                    Spacer(Modifier.weight(1f))
                     TextButton(onClick = onDismiss) { Text("Cancelar", color = BD.TextLow) }
                     Button(
-                        onClick = { onSave(build()); },
+                        onClick = { onSave(build()) },
                         enabled = valid,
                         shape = RoundedCornerShape(14.dp),
-                    ) { Text("Aceptar") }
+                    ) { Text("Guardar") }
                 }
 
+                Spacer(Modifier.height(10.dp))
+                // Los dos botones grandes van uno debajo de otro: así nunca se parten.
+                OutlinedButton(
+                    onClick = {
+                        testing = true
+                        testResult = "Probando…"
+                        testLog = null
+                        onTest(build()) { text, logText ->
+                            testResult = text
+                            testLog = logText
+                            testing = false
+                        }
+                    },
+                    enabled = valid && !testing,
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text("Probar conexión") }
                 Spacer(Modifier.height(8.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(
-                        onClick = {
-                            testing = true
-                            testResult = "Probando…"
-                            testLog = null
-                            onTest(build()) { text, logText ->
-                                testResult = text
-                                testLog = logText
-                                testing = false
-                            }
-                        },
-                        enabled = valid && !testing,
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier.weight(1f),
-                    ) { Text("Probar conexión") }
-                    Button(
-                        onClick = { onConnect(build()) },
-                        enabled = valid,
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier.weight(1f),
-                    ) { Text("Conectar") }
-                }
+                Button(
+                    onClick = { onConnect(build()) },
+                    enabled = valid,
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text("Conectar") }
             }
         }
     }

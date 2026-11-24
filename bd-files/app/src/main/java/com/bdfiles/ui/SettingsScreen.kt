@@ -130,6 +130,35 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
             SettingRow("Miniaturas", "Fotos, vídeos, PDF, APK y iconos de los .jar") {
                 Switch(checked = prefs.showThumbnails, onCheckedChange = { prefs.showThumbnails = it; changed(); vm.reload() })
             }
+            SettingRow(
+                "Tamaño del texto en la app",
+                when {
+                    prefs.textScale < 0.95f -> "Más pequeño que en el resto del móvil (${(prefs.textScale * 100).toInt()} %)"
+                    prefs.textScale > 1.05f -> "Más grande que en el resto del móvil (${(prefs.textScale * 100).toInt()} %)"
+                    else -> "Igual que en el resto del móvil"
+                },
+            ) {}
+            Row(
+                Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                listOf(0.8f to "80 %", 0.9f to "90 %", 1.0f to "Sistema", 1.1f to "110 %").forEach { (v, label) ->
+                    FilterChip(
+                        selected = kotlin.math.abs(prefs.textScale - v) < 0.01f,
+                        onClick = { prefs.textScale = v; changed() },
+                        label = { Text(label) },
+                        shape = RoundedCornerShape(50),
+                    )
+                }
+            }
+            Text(
+                "Si tienes la letra del móvil muy grande y aquí se te amontonan las cosas, " +
+                    "bájala solo para BD Files.",
+                Modifier.padding(horizontal = 20.dp, vertical = 2.dp),
+                style = MaterialTheme.typography.bodySmall,
+                color = BD.TextLow,
+            )
+
             SettingRow("Iconos de colores", "Cada tipo de archivo con su color") {
                 Switch(checked = prefs.colorfulIcons, onCheckedChange = { prefs.colorfulIcons = it; changed() })
             }

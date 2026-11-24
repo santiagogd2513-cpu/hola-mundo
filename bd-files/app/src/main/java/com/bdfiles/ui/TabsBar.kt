@@ -82,7 +82,7 @@ fun TabsBar(vm: AppViewModel) {
                         onLongClick = { vm.closeTab(i) },
                     )
                     .padding(horizontal = 14.dp, vertical = 8.dp)
-                    .widthIn(max = 150.dp),
+                    .widthIn(max = 200.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
