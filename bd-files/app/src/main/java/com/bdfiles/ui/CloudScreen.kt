@@ -93,8 +93,7 @@ fun CloudScreen(vm: AppViewModel, onBack: () -> Unit) {
             items(servers) { s ->
                 BigRow(
                     emoji = when (s.deviceType) {
-                        FtpDeviceType.XBOX360 -> "🎮"
-                        FtpDeviceType.PS3 -> "🎮"
+                        FtpDeviceType.XBOX360, FtpDeviceType.PS3 -> "🎮"
                         FtpDeviceType.ROUTER_NAS -> "📡"
                         FtpDeviceType.PC_OTHER -> "💻"
                     },
@@ -134,7 +133,7 @@ fun CloudScreen(vm: AppViewModel, onBack: () -> Unit) {
             item { SectionHeader("Servicios de nube", "☁️") }
             item {
                 CloudCard(
-                    emoji = "📦",
+                    drawable = com.bdfiles.R.drawable.ic_mediafire,
                     name = "MediaFire",
                     status = "Solo enlaces directos",
                     detail = "Entrar con tu cuenta necesita una clave de desarrollador que MediaFire da " +
@@ -145,7 +144,7 @@ fun CloudScreen(vm: AppViewModel, onBack: () -> Unit) {
             }
             item {
                 CloudCard(
-                    emoji = "🔐",
+                    drawable = com.bdfiles.R.drawable.ic_mega,
                     name = "Mega",
                     status = "No disponible todavía",
                     detail = "Mega cifra todo en el móvil con su propio sistema. Para que funcione hay que " +
@@ -199,7 +198,7 @@ fun CloudScreen(vm: AppViewModel, onBack: () -> Unit) {
 }
 
 @Composable
-private fun CloudCard(emoji: String, name: String, status: String, detail: String, onClick: () -> Unit) {
+private fun CloudCard(drawable: Int, name: String, status: String, detail: String, onClick: () -> Unit) {
     Card(
         Modifier
             .fillMaxWidth()
@@ -214,7 +213,13 @@ private fun CloudCard(emoji: String, name: String, status: String, detail: Strin
                     .size(42.dp)
                     .background(BD.Violet.copy(alpha = 0.16f), RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center,
-            ) { Text(emoji, fontSize = 21.sp) }
+            ) {
+                androidx.compose.foundation.Image(
+                    painter = androidx.compose.ui.res.painterResource(drawable),
+                    contentDescription = null,
+                    modifier = Modifier.size(28.dp),
+                )
+            }
             Spacer(Modifier.width(13.dp))
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {

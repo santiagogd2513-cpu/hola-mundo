@@ -1,9 +1,9 @@
 package com.bdfiles.ui
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -23,14 +22,12 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -42,22 +39,23 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.bdfiles.AppViewModel
+import com.bdfiles.R
 import com.bdfiles.Screen
 import com.bdfiles.core.formatSize
-import com.bdfiles.data.Shortcut
 import com.bdfiles.net.FtpDeviceType
 import com.bdfiles.ui.theme.BD
 import java.io.File
 
 /**
- * Pantalla de inicio: dispositivos, accesos directos, favoritos y nube/red.
+ * Pantalla de inicio, toda en lista: dispositivos, accesos directos,
+ * favoritos y nube/red. Los iconos van siempre a la izquierda.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,9 +87,7 @@ fun HomeScreen(vm: AppViewModel) {
                     IconButton(onClick = {
                         vm.navigate(vm.internalRoot, "local")
                         vm.startSearch()
-                    }) {
-                        Icon(Icons.Filled.Search, "Buscar", tint = BD.Cyan)
-                    }
+                    }) { Icon(Icons.Filled.Search, "Buscar", tint = BD.Cyan) }
                     IconButton(onClick = { vm.screen = Screen.SETTINGS }) {
                         Icon(Icons.Filled.Settings, "Ajustes", tint = BD.LightPurple)
                     }
@@ -111,51 +107,47 @@ fun HomeScreen(vm: AppViewModel) {
                 val src = remember(v.path, revision) { runCatching { vm.source(sourceId) }.getOrNull() }
                 val free = src?.freeSpace() ?: -1
                 val total = src?.totalSpace() ?: -1
-                StorageCard(
+                val used = if (total > 0 && free >= 0) ((total - free).toFloat() / total).coerceIn(0f, 1f) else null
+                HomeRow(
                     emoji = if (v.removable) "💽" else "📱",
                     title = v.title,
-                    free = free,
-                    total = total,
-                    path = v.path,
+                    subtitle = if (used != null) "${formatSize(free)} libres de ${formatSize(total)}" else v.path,
+                    tint = BD.Blue,
+                    bar = used,
                 ) { vm.navigate(v.path, sourceId) }
             }
             if (vm.shizukuReady) {
                 item {
-                    StorageCard(
+                    HomeRow(
                         emoji = "⚙️",
                         title = "Sistema de archivos (/)",
-                        free = -1,
-                        total = -1,
-                        path = "Con Shizuku: /data, /system…",
+                        subtitle = "Con Shizuku: /data, /system…",
+                        tint = BD.Success,
                     ) { vm.navigate("/", "shizuku") }
                 }
             }
 
             // ------------------------------------------------ accesos directos
             item {
-                SectionHeaderWithAction("Accesos directos", "🔗", "Gestionar") {
-                    vm.screen = Screen.SHORTCUTS
+                SectionHeaderWithAction("Accesos directos", "🔗", "Gestionar") { vm.screen = Screen.SHORTCUTS }
+            }
+            items(shortcuts) { s ->
+                HomeRow(emoji = s.icon, title = s.name, subtitle = shortPath(s.path, vm.internalRoot), tint = BD.Cyan) {
+                    if (s.sourceId != "local" || File(s.path).isDirectory) {
+                        vm.navigate(s.path, s.sourceId)
+                    } else {
+                        vm.message = "“${s.path}” ya no existe."
+                    }
                 }
             }
             item {
-                LazyRow(
-                    Modifier.fillMaxWidth(),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    items(shortcuts) { s ->
-                        ShortcutTile(s) {
-                            if (s.sourceId != "local" || File(s.path).isDirectory) {
-                                vm.navigate(s.path, s.sourceId)
-                            } else {
-                                vm.message = "“${s.path}” ya no existe."
-                            }
-                        }
-                    }
-                    item {
-                        AddTile("Añadir") { vm.screen = Screen.SHORTCUTS }
-                    }
-                }
+                HomeRow(
+                    icon = Icons.Filled.Add,
+                    title = "Añadir acceso directo",
+                    subtitle = "Elige una carpeta y guárdala aquí",
+                    tint = BD.Violet,
+                    showChevron = false,
+                ) { vm.screen = Screen.SHORTCUTS }
             }
 
             // ------------------------------------------------ favoritos
@@ -166,17 +158,20 @@ fun HomeScreen(vm: AppViewModel) {
             }
             if (favorites.isEmpty()) {
                 item {
-                    EmptyHint(
+                    Text(
                         "Todavía no tienes favoritos.\n" +
                             "Abre el menú ⋮ de cualquier archivo o carpeta y pulsa «Añadir a favoritos».",
+                        Modifier.padding(horizontal = 22.dp, vertical = 8.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = BD.TextLow,
                     )
                 }
             }
-            items(favorites.take(8)) { f ->
-                BigRow(
+            items(favorites) { f ->
+                HomeRow(
                     emoji = f.icon,
                     title = f.name,
-                    subtitle = f.path,
+                    subtitle = shortPath(f.path, vm.internalRoot),
                     tint = BD.Warning,
                     onRemove = { vm.prefs.toggleFavorite(f); revision++ },
                 ) {
@@ -190,7 +185,7 @@ fun HomeScreen(vm: AppViewModel) {
                 SectionHeaderWithAction("Nube y red", "🌐", "Gestionar") { vm.screen = Screen.CLOUD }
             }
             items(servers) { s ->
-                BigRow(
+                HomeRow(
                     emoji = when (s.deviceType) {
                         FtpDeviceType.XBOX360, FtpDeviceType.PS3 -> "🎮"
                         FtpDeviceType.ROUTER_NAS -> "📡"
@@ -202,208 +197,133 @@ fun HomeScreen(vm: AppViewModel) {
                 ) { vm.connectServer(s) }
             }
             item {
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    CloudTile("🌐", "FTP", "Xbox, PC, NAS", BD.Cyan, Modifier.weight(1f)) {
-                        vm.screen = Screen.CLOUD
-                    }
-                    CloudTile("📦", "MediaFire", "Por enlace", BD.Blue, Modifier.weight(1f)) {
-                        vm.screen = Screen.CLOUD
-                    }
-                    CloudTile("🔐", "Mega", "Ver nota", BD.Violet, Modifier.weight(1f)) {
-                        vm.screen = Screen.CLOUD
-                    }
-                }
+                HomeRow(
+                    drawable = R.drawable.ic_ftp,
+                    title = "Servidor FTP",
+                    subtitle = if (servers.isEmpty()) "Xbox 360, PS3, PC, router o NAS" else "Añadir otro servidor",
+                    tint = BD.Cyan,
+                ) { vm.screen = Screen.CLOUD }
+            }
+            item {
+                HomeRow(
+                    drawable = R.drawable.ic_mediafire,
+                    title = "MediaFire",
+                    subtitle = "Descarga por enlace directo",
+                    tint = BD.Blue,
+                ) { vm.screen = Screen.CLOUD }
+            }
+            item {
+                HomeRow(
+                    drawable = R.drawable.ic_mega,
+                    title = "Mega",
+                    subtitle = "Todavía no disponible: toca para ver por qué",
+                    tint = BD.Danger,
+                ) { vm.screen = Screen.CLOUD }
             }
 
-            // ------------------------------------------------ atajos del sistema
+            // ------------------------------------------------ más
             item { SectionHeader("Más", "⚡") }
             item {
-                BigRow("🗑️", "Papelera", "Lo que has borrado y aún se puede recuperar", BD.TextLow) {
-                    vm.openTrash()
-                }
+                HomeRow("🗑️", "Papelera", "Lo borrado que aún se puede recuperar", BD.TextLow) { vm.openTrash() }
             }
             item {
-                BigRow("🔑", "Permisos de apps", "Dar acceso al almacenamiento a emuladores y demás", BD.Success) {
+                HomeRow("🔑", "Permisos de apps", "Dar acceso al almacenamiento a emuladores y demás", BD.Success) {
                     vm.screen = Screen.APP_PERMISSIONS
                 }
             }
-            item { Spacer(Modifier.height(40.dp)) }
+            item {
+                HomeRow("⚙️", "Ajustes", "Interfaz, archivos, verificaciones y acerca de", BD.LightPurple) {
+                    vm.screen = Screen.SETTINGS
+                }
+            }
+            item { Spacer(Modifier.height(36.dp)) }
         }
     }
 }
 
-/** Tarjeta de un almacenamiento, con barra de espacio en azul. */
+/** Acorta la ruta para que quepa: quita la parte del almacenamiento interno. */
+private fun shortPath(path: String, root: String): String {
+    val p = path.removePrefix(root).trim('/')
+    return if (p.isEmpty()) "Carpeta principal" else p
+}
+
+/**
+ * Fila de la pantalla de inicio: icono a la izquierda, texto y, si hace falta,
+ * una barra de espacio debajo.
+ */
 @Composable
-private fun StorageCard(
-    emoji: String,
+private fun HomeRow(
+    emoji: String? = null,
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    drawable: Int? = null,
     title: String,
-    free: Long,
-    total: Long,
-    path: String,
+    subtitle: String,
+    tint: Color,
+    bar: Float? = null,
+    showChevron: Boolean = true,
+    onRemove: (() -> Unit)? = null,
     onClick: () -> Unit,
 ) {
-    val used = if (total > 0 && free >= 0) ((total - free).toFloat() / total).coerceIn(0f, 1f) else null
-    Card(
+    Row(
         Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 5.dp)
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = BD.SurfaceCard),
+            .clickable(onClick = onClick)
+            .padding(horizontal = 18.dp, vertical = 11.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    Modifier
-                        .size(44.dp)
-                        .background(BD.Blue.copy(alpha = 0.20f), RoundedCornerShape(13.dp))
-                        .border(1.dp, BD.Cyan.copy(alpha = 0.35f), RoundedCornerShape(13.dp)),
-                    contentAlignment = Alignment.Center,
-                ) { Text(emoji, fontSize = 22.sp) }
-                Spacer(Modifier.width(13.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(title, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(
-                        if (used != null) "${formatSize(free)} libres de ${formatSize(total)}" else path,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = BD.TextLow,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                Text("›", fontSize = 22.sp, color = BD.Cyan)
+        Box(
+            Modifier
+                .size(44.dp)
+                .background(tint.copy(alpha = 0.16f), RoundedCornerShape(13.dp))
+                .border(1.dp, tint.copy(alpha = 0.25f), RoundedCornerShape(13.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            when {
+                drawable != null -> Image(
+                    painter = painterResource(drawable),
+                    contentDescription = null,
+                    modifier = Modifier.size(28.dp),
+                )
+                icon != null -> Icon(icon, null, tint = tint, modifier = Modifier.size(22.dp))
+                else -> Text(emoji ?: "📁", fontSize = 21.sp)
             }
-            if (used != null) {
-                Spacer(Modifier.height(12.dp))
+        }
+        Spacer(Modifier.width(13.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = BD.TextLow,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (bar != null) {
+                Spacer(Modifier.height(7.dp))
                 Box(
                     Modifier
                         .fillMaxWidth()
-                        .height(8.dp)
+                        .height(6.dp)
                         .background(BD.SurfaceHigh, RoundedCornerShape(50)),
                 ) {
                     Box(
                         Modifier
-                            .fillMaxWidth(used.coerceAtLeast(0.02f))
-                            .height(8.dp)
+                            .fillMaxWidth(bar.coerceAtLeast(0.02f))
+                            .height(6.dp)
                             .background(BD.blueGradient, RoundedCornerShape(50)),
                     )
                 }
-                Spacer(Modifier.height(5.dp))
-                Text(
-                    "${(used * 100).toInt()} % usado",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = BD.CyanSoft,
-                    fontSize = 11.sp,
-                )
             }
         }
-    }
-}
-
-/** Cuadradito de acceso directo. */
-@Composable
-private fun ShortcutTile(s: Shortcut, onClick: () -> Unit) {
-    Surface(
-        shape = RoundedCornerShape(18.dp),
-        color = BD.SurfaceCard,
-        modifier = Modifier
-            .width(96.dp)
-            .clickable(onClick = onClick),
-    ) {
-        Column(
-            Modifier.padding(vertical = 14.dp, horizontal = 8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Box(
-                Modifier
-                    .size(42.dp)
-                    .background(
-                        Brush.linearGradient(
-                            listOf(BD.Blue.copy(alpha = 0.28f), BD.Cyan.copy(alpha = 0.18f)),
-                        ),
-                        RoundedCornerShape(13.dp),
-                    ),
-                contentAlignment = Alignment.Center,
-            ) { Text(s.icon, fontSize = 21.sp) }
-            Spacer(Modifier.height(8.dp))
-            Text(
-                s.name,
-                style = MaterialTheme.typography.bodySmall,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+        if (onRemove != null) {
+            IconButton(onClick = onRemove) {
+                Icon(Icons.Filled.Close, "Quitar", tint = BD.TextLow, modifier = Modifier.size(18.dp))
+            }
+        } else if (showChevron) {
+            Text("›", fontSize = 22.sp, color = tint)
         }
     }
-}
-
-@Composable
-private fun AddTile(label: String, onClick: () -> Unit) {
-    Surface(
-        shape = RoundedCornerShape(18.dp),
-        color = Color.Transparent,
-        modifier = Modifier
-            .width(96.dp)
-            .clickable(onClick = onClick)
-            .border(1.dp, BD.Outline, RoundedCornerShape(18.dp)),
-    ) {
-        Column(
-            Modifier.padding(vertical = 14.dp, horizontal = 8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Box(
-                Modifier.size(42.dp),
-                contentAlignment = Alignment.Center,
-            ) { Icon(Icons.Filled.Add, null, tint = BD.Cyan) }
-            Spacer(Modifier.height(8.dp))
-            Text(label, style = MaterialTheme.typography.bodySmall, color = BD.TextLow)
-        }
-    }
-}
-
-@Composable
-private fun CloudTile(
-    emoji: String,
-    name: String,
-    note: String,
-    tint: Color,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-) {
-    Surface(
-        shape = RoundedCornerShape(18.dp),
-        color = BD.SurfaceCard,
-        modifier = modifier.clickable(onClick = onClick),
-    ) {
-        Column(
-            Modifier.padding(vertical = 14.dp, horizontal = 10.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Box(
-                Modifier
-                    .size(40.dp)
-                    .background(tint.copy(alpha = 0.18f), RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.Center,
-            ) { Text(emoji, fontSize = 20.sp) }
-            Spacer(Modifier.height(8.dp))
-            Text(name, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium, maxLines = 1)
-            Text(note, style = MaterialTheme.typography.bodySmall, color = BD.TextLow, fontSize = 10.sp, maxLines = 1)
-        }
-    }
-}
-
-@Composable
-private fun EmptyHint(text: String) {
-    Text(
-        text,
-        Modifier.padding(horizontal = 22.dp, vertical = 8.dp),
-        style = MaterialTheme.typography.bodySmall,
-        color = BD.TextLow,
-    )
+    HorizontalDivider(Modifier.padding(start = 75.dp), color = BD.Outline.copy(alpha = 0.3f))
 }
 
 /** Cabecera de sección con un botón a la derecha. */

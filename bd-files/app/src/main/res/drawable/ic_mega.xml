@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Icono propio para Mega: círculo en su rojo de marca con una M. No es el logotipo oficial. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <path
+        android:fillColor="#D9272E"
+        android:pathData="M24,3a21,21 0,1 1,0 42a21,21 0,1 1,0 -42z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M13,33V15h4.6l6.4,8.2 6.4,-8.2H35v18h-4.6v-10.6l-5.3,6.7h-2.2l-5.3,-6.7V33z" />
+</vector>
