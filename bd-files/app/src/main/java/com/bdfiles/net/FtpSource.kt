@@ -35,6 +35,7 @@ class FtpSource(val config: FtpServerConfig) : FileSource {
     override val id: String get() = config.id
     override val title: String get() = config.name
     override val rootPath: String get() = config.startPath
+    override val isRemote: Boolean get() = true
 
     private val client = FtpClient(
         host = config.host,

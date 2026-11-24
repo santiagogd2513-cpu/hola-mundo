@@ -88,17 +88,44 @@ class FileOperations(
         )
     }
 
-    /** Suma el tamaño y el número de archivos que hay dentro de una lista de elementos. */
-    private fun measure(source: FileSource, items: List<FileItem>): Pair<Long, Int> {
+    /**
+     * Suma el tamaño y el número de archivos. Va avisando del recuento para que
+     * no parezca que la app se ha quedado colgada.
+     *
+     * En servidores de red no se mide nada: recorrer carpetas por FTP es muy lento
+     * y haría esperar un buen rato antes de empezar a copiar.
+     */
+    private fun measure(source: FileSource, items: List<FileItem>, action: String): Pair<Long, Int> {
+        if (source.isRemote) {
+            // Lo único que se sabe sin recorrer nada: lo que hay a la vista.
+            val known = items.filter { !it.isDir }
+            return 0L to known.size
+        }
         var bytes = 0L
         var count = 0
         fun walk(item: FileItem) {
             checkCancelled()
             if (item.isDir) {
+                report(
+                    OpProgress(
+                        action = action,
+                        currentName = "Calculando tamaño… $count archivos (${formatSize(bytes)})",
+                        indeterminate = true,
+                    ),
+                )
                 runCatching { source.list(item.path) }.getOrDefault(emptyList()).forEach { walk(it) }
             } else {
                 bytes += item.size
                 count++
+                if (count % 40 == 0) {
+                    report(
+                        OpProgress(
+                            action = action,
+                            currentName = "Calculando tamaño… $count archivos (${formatSize(bytes)})",
+                            indeterminate = true,
+                        ),
+                    )
+                }
             }
         }
         items.forEach { walk(it) }
@@ -117,13 +144,16 @@ class FileOperations(
     ): OpResult {
         startTime = System.currentTimeMillis()
         val action = if (move) "Moviendo" else "Copiando"
-        emit(action, "Calculando tamaño…", force = true, indeterminate = true)
-        val (bytes, count) = measure(from, items)
+        emit(action, "Preparando…", force = true, indeterminate = true)
+        val (bytes, count) = measure(from, items, action)
         totalBytes = bytes
         totalFiles = count
         doneBytes = 0
         doneFiles = 0
 
+        if (from.isRemote) {
+            totalBytes = items.filter { !it.isDir }.sumOf { it.size }
+        }
         val sameSource = from.id == to.id
         for (item in items) {
             checkCancelled()
@@ -168,9 +198,15 @@ class FileOperations(
 
         if (item.isDir) {
             to.mkdirs(targetPath)
+            emit(action, "Leyendo ${item.name}…", force = true, indeterminate = true)
             val children = runCatching { from.list(item.path) }.getOrElse {
                 errors.add("${item.path}: no se pudo leer (${it.message})")
                 return
+            }
+            if (from.isRemote) {
+                // No se midió antes: el total crece según se va descubriendo.
+                totalFiles += children.count { !it.isDir }
+                totalBytes += children.filter { !it.isDir }.sumOf { it.size }
             }
             for (c in children) copyEntry(from, c, to, targetPath, move, sameSource, conflict, action)
             if (move) runCatching { from.delete(item.path) }
@@ -265,8 +301,8 @@ class FileOperations(
 
     fun delete(source: FileSource, items: List<FileItem>): OpResult {
         startTime = System.currentTimeMillis()
-        emit("Borrando", "Calculando…", force = true, indeterminate = true)
-        val (bytes, count) = measure(source, items)
+        emit("Borrando", "Preparando…", force = true, indeterminate = true)
+        val (bytes, count) = measure(source, items, "Borrando")
         totalBytes = bytes
         totalFiles = count
         doneFiles = 0

@@ -7,7 +7,7 @@ import java.io.InputStream
 import java.io.OutputStream
 
 /** Almacenamiento normal del móvil (y tarjetas montadas a las que se pueda llegar por ruta). */
-class LocalSource(
+open class LocalSource(
     override val id: String,
     override val title: String,
     override val rootPath: String,

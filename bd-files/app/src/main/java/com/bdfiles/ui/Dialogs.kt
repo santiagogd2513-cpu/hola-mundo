@@ -109,8 +109,11 @@ fun ProgressOverlay(p: OpProgress, onCancel: () -> Unit) {
 
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text(
-                            if (p.totalBytes > 0) "${formatSize(p.doneBytes)} / ${formatSize(p.totalBytes)}"
-                            else formatSize(p.doneBytes),
+                            when {
+                                p.totalBytes > 0 -> "${formatSize(p.doneBytes)} / ${formatSize(p.totalBytes)}"
+                                p.doneBytes > 0 -> formatSize(p.doneBytes)
+                                else -> "Preparando…"
+                            },
                             style = MaterialTheme.typography.bodySmall,
                             color = BD.TextLow,
                         )

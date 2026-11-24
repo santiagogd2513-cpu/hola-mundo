@@ -18,12 +18,14 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -218,20 +220,22 @@ fun GradientProgressBar(fraction: Float?, indeterminate: Boolean, modifier: Modi
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .border(1.dp, BD.Outline.copy(alpha = 0.6f), shape),
     ) {
+        val barWidth = maxWidth
         if (indeterminate || fraction == null) {
-            val width = maxWidth
+            // Un trozo de color que va y viene de lado a lado.
+            val segment = barWidth * 0.45f
             val transition = rememberInfiniteTransition(label = "indeterminado")
-            val x by transition.animateFloat(
-                initialValue = -0.5f,
-                targetValue = 1.0f,
-                animationSpec = infiniteRepeatable(tween(1300)),
+            val t by transition.animateFloat(
+                initialValue = 0f,
+                targetValue = 1f,
+                animationSpec = infiniteRepeatable(tween(1400)),
                 label = "desplazamiento",
             )
             Box(
                 Modifier
-                    .offset(x = width * x)
-                    .fillMaxWidth(0.5f)
-                    .fillMaxSize()
+                    .offset(x = (barWidth + segment) * t - segment)
+                    .width(segment)
+                    .fillMaxHeight()
                     .clip(shape)
                     .background(
                         Brush.horizontalGradient(
@@ -243,8 +247,8 @@ fun GradientProgressBar(fraction: Float?, indeterminate: Boolean, modifier: Modi
             val animated by animateFloatAsState(fraction.coerceIn(0f, 1f), label = "progreso")
             Box(
                 Modifier
-                    .fillMaxWidth(animated.coerceAtLeast(0.015f))
-                    .fillMaxSize()
+                    .width(barWidth * animated.coerceAtLeast(0.02f))
+                    .fillMaxHeight()
                     .clip(shape)
                     .background(BD.gradient),
             )

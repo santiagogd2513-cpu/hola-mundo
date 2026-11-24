@@ -214,3 +214,86 @@ class OperationsTest {
         assertEquals("carpeta (2)", uniqueName(setOf("carpeta"), "carpeta"))
     }
 }
+
+/** Comprobaciones del avance al copiar, sobre todo desde un sitio en red. */
+class ProgressTest {
+    private lateinit var tmp: File
+    private lateinit var src: File
+    private lateinit var dst: File
+    private val pasos = ArrayList<OpProgress>()
+
+    @Before
+    fun setUp() {
+        tmp = File.createTempFile("bdprog", "").let { it.delete(); it.mkdirs(); it }
+        src = File(tmp, "origen").apply { mkdirs() }
+        dst = File(tmp, "destino").apply { mkdirs() }
+        pasos.clear()
+    }
+
+    @After
+    fun tearDown() {
+        tmp.deleteRecursively()
+    }
+
+    /** Un origen que se comporta como si estuviera en la red. */
+    private class RemoteLike(root: File) : LocalSource("remoto", "Red de prueba", root.absolutePath) {
+        override val isRemote: Boolean get() = true
+    }
+
+    private fun item(f: File) = FileItem(f.name, f.absolutePath, f.isDirectory, f.length(), f.lastModified())
+
+    @Test
+    fun desdeLaRedNoSeQuedaCalculandoYLuegoDaDatos() {
+        File(src, "carpeta/dentro").mkdirs()
+        File(src, "carpeta/a.bin").writeBytes(Random(1).nextBytes(60_000))
+        File(src, "carpeta/dentro/b.bin").writeBytes(Random(2).nextBytes(40_000))
+
+        val ops = FileOperations({ pasos.add(it) }, { false }, verify = false)
+        val r = ops.copy(
+            RemoteLike(src), listOf(item(File(src, "carpeta"))),
+            LocalSource("local", "Local", dst.absolutePath), dst.absolutePath, move = false,
+        )
+        assertTrue(r.errors.toString(), r.ok)
+        assertEquals(60_000, File(dst, "carpeta/a.bin").length())
+        assertEquals(40_000, File(dst, "carpeta/dentro/b.bin").length())
+
+        // No debe pasarse el rato "calculando tamaño" en un origen de red.
+        assertTrue(
+            "No debería medir toda la carpeta por la red",
+            pasos.none { it.currentName.startsWith("Calculando tamaño") },
+        )
+        // Y el total tiene que ir creciendo según descubre archivos.
+        assertTrue("Debe acabar sabiendo el total", pasos.last().totalBytes >= 100_000)
+        assertTrue("Debe contar los archivos", pasos.last().totalFiles >= 2)
+        assertTrue("Debe dar velocidad", pasos.any { it.bytesPerSecond > 0 })
+    }
+
+    @Test
+    fun enLocalAvisaMientrasCuenta() {
+        repeat(90) { i -> File(src, "f$i.bin").writeBytes(ByteArray(1000)) }
+        val ops = FileOperations({ pasos.add(it) }, { false }, verify = false)
+        ops.copy(
+            LocalSource("local", "Local", src.absolutePath),
+            (0 until 90).map { item(File(src, "f$it.bin")) },
+            LocalSource("local2", "Local", dst.absolutePath), dst.absolutePath, move = false,
+        )
+        assertTrue(
+            "Debe avisar del recuento mientras mide",
+            pasos.any { it.currentName.startsWith("Calculando tamaño") },
+        )
+    }
+
+    @Test
+    fun laFraccionDeAvanceVaDeCeroAUno() {
+        File(src, "grande.bin").writeBytes(Random(5).nextBytes(400_000))
+        val ops = FileOperations({ pasos.add(it) }, { false }, verify = false)
+        ops.copy(
+            LocalSource("local", "Local", src.absolutePath), listOf(item(File(src, "grande.bin"))),
+            LocalSource("local2", "Local", dst.absolutePath), dst.absolutePath, move = false,
+        )
+        val fracciones = pasos.mapNotNull { it.fraction }
+        assertTrue("Debe haber fracciones de avance", fracciones.isNotEmpty())
+        assertTrue("Ninguna fuera de 0..1", fracciones.all { it in 0f..1f })
+        assertEquals("Debe acabar al 100 %", 1f, fracciones.last(), 0.001f)
+    }
+}

@@ -24,6 +24,12 @@ interface FileSource : Closeable {
 
     val canWrite: Boolean get() = true
 
+    /**
+     * true si está al otro lado de la red. En esos casos recorrer carpetas es lento,
+     * así que no se mide el tamaño total antes de empezar.
+     */
+    val isRemote: Boolean get() = false
+
     fun list(path: String): List<FileItem>
 
     fun stat(path: String): FileItem?
