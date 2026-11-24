@@ -50,6 +50,26 @@ object BD {
     /** Degradado azul, para las barras de espacio y los acentos fríos. */
     val blueGradient = Brush.horizontalGradient(listOf(Blue, Cyan))
 
+    /** Un color propio para cada pestaña, hasta 14. */
+    val tabColors = listOf(
+        Color(0xFF3D7BFF), // azul
+        Color(0xFF00EAFF), // cian
+        Color(0xFFB06BFF), // violeta
+        Color(0xFFFF5FC8), // rosa
+        Color(0xFF2BE8C4), // turquesa
+        Color(0xFFFFC24B), // ámbar
+        Color(0xFF8E3BE8), // púrpura
+        Color(0xFF4FC3F7), // azul cielo
+        Color(0xFFFF7A6B), // coral
+        Color(0xFFA8E05F), // lima
+        Color(0xFFD8B4FF), // morado claro
+        Color(0xFF6C5CE7), // índigo
+        Color(0xFFFF4FA3), // magenta
+        Color(0xFF4BE3A0), // verde menta
+    )
+
+    fun tabColor(index: Int): Color = tabColors[index % tabColors.size]
+
     fun headerGradient() = Brush.verticalGradient(
         listOf(Color(0xFF26173F), Color(0xFF121A2E)),
     )

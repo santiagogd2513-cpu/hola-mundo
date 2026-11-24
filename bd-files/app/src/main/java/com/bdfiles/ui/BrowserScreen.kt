@@ -104,7 +104,7 @@ fun BrowserScreen(vm: AppViewModel) {
                     )
                 }
                 if (vm.searching) SearchField(vm)
-                if (vm.prefs.tabsEnabled && vm.tabs.size > 0) TabsRow(vm)
+                TabsBar(vm)
                 if (vm.prefs.showPathBar && !vm.searching) PathBar(vm)
             }
         },
@@ -433,68 +433,6 @@ private fun SelectionBar(vm: AppViewModel, onMore: () -> Unit, moreOpen: Boolean
             }
         },
     )
-}
-
-// ------------------------------------------------------------------ pestañas
-
-@Composable
-private fun TabsRow(vm: AppViewModel) {
-    val scroll = rememberScrollState()
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .horizontalScroll(scroll)
-            .padding(horizontal = 10.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        vm.tabs.forEachIndexed { i, t ->
-            val active = i == vm.activeTabIndex
-            Surface(
-                shape = RoundedCornerShape(50),
-                color = if (active) BD.Purple.copy(alpha = 0.55f) else BD.SurfaceHigh,
-                modifier = Modifier.clickable { vm.selectTab(i) },
-            ) {
-                Row(
-                    Modifier.padding(start = 14.dp, end = if (vm.tabs.size > 1) 4.dp else 14.dp, top = 6.dp, bottom = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        if (t.sourceId.startsWith("ftp:")) "🌐 " + t.title.ifEmpty { "FTP" }
-                        else t.title.ifEmpty { "Inicio" },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (active) Color.White else BD.TextLow,
-                        maxLines = 1,
-                        fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal,
-                    )
-                    if (vm.tabs.size > 1) {
-                        IconButton(onClick = { vm.closeTab(i) }, modifier = Modifier.size(26.dp)) {
-                            Icon(
-                                Icons.Filled.Close,
-                                "Cerrar pestaña",
-                                tint = if (active) Color.White else BD.TextLow,
-                                modifier = Modifier.size(14.dp),
-                            )
-                        }
-                    }
-                }
-            }
-        }
-        if (vm.tabs.size < vm.prefs.maxTabs) {
-            Surface(
-                shape = RoundedCornerShape(50),
-                color = BD.SurfaceHigh,
-                modifier = Modifier.clickable { vm.newTab() },
-            ) {
-                Icon(
-                    Icons.Filled.Add,
-                    "Pestaña nueva",
-                    tint = BD.Cyan,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp).size(18.dp),
-                )
-            }
-        }
-    }
 }
 
 // ------------------------------------------------------------------ ruta

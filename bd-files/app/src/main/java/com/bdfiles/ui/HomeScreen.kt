@@ -68,8 +68,8 @@ fun HomeScreen(vm: AppViewModel) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
+            Column(Modifier.background(BD.headerGradient())) {
             TopAppBar(
-                modifier = Modifier.background(BD.headerGradient()),
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -93,6 +93,8 @@ fun HomeScreen(vm: AppViewModel) {
                     }
                 },
             )
+            TabsBar(vm)
+            }
         },
     ) { pad ->
         LazyColumn(

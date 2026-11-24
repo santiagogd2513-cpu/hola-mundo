@@ -28,7 +28,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -61,6 +62,7 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
     val prefs = vm.prefs
     // Un contador para redibujar cuando cambia un ajuste guardado.
     var revision by remember { mutableIntStateOf(0) }
+    var tabCountDialog by remember { mutableStateOf(false) }
     fun changed() { revision++ }
 
     Scaffold(
@@ -106,25 +108,23 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
                 }
             }
 
-            SettingRow("Pestañas", "Varias carpetas abiertas a la vez") {
-                Switch(checked = prefs.tabsEnabled, onCheckedChange = { prefs.tabsEnabled = it; changed() })
-            }
-            if (prefs.tabsEnabled) {
-                var maxTabs by remember { mutableIntStateOf(prefs.maxTabs) }
-                Column(Modifier.padding(horizontal = 20.dp)) {
-                    Text(
-                        "Máximo de pestañas: $maxTabs (el tope es ${Prefs.MAX_TABS_LIMIT})",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = BD.TextLow,
-                    )
-                    Slider(
-                        value = maxTabs.toFloat(),
-                        onValueChange = { maxTabs = it.toInt() },
-                        onValueChangeFinished = { prefs.maxTabs = maxTabs; changed() },
-                        valueRange = 2f..Prefs.MAX_TABS_LIMIT.toFloat(),
-                        steps = Prefs.MAX_TABS_LIMIT - 3,
-                    )
-                }
+            SettingRow(
+                "Pestañas",
+                if (prefs.tabsEnabled) {
+                    "${prefs.maxTabs} pestañas. Toca aquí para cambiar cuántas quieres."
+                } else {
+                    "Apagadas. Toca el interruptor para encenderlas."
+                },
+                onClick = { if (prefs.tabsEnabled) tabCountDialog = true },
+            ) {
+                Switch(
+                    checked = prefs.tabsEnabled,
+                    onCheckedChange = {
+                        prefs.tabsEnabled = it
+                        vm.applyTabCount(if (it) prefs.maxTabs else 1)
+                        changed()
+                    },
+                )
             }
 
             SettingRow("Miniaturas", "Fotos, vídeos, PDF, APK y iconos de los .jar") {
@@ -284,6 +284,53 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
             Spacer(Modifier.height(36.dp))
         }
     }
+
+    if (tabCountDialog) {
+        TabCountDialog(
+            current = prefs.maxTabs,
+            onDismiss = { tabCountDialog = false },
+            onPick = {
+                vm.applyTabCount(it)
+                tabCountDialog = false
+                changed()
+            },
+        )
+    }
+}
+
+/** Menú para elegir cuántas pestañas se quieren, con botones de opción. */
+@Composable
+private fun TabCountDialog(current: Int, onDismiss: () -> Unit, onPick: (Int) -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(24.dp),
+        title = { Text("¿Cuántas pestañas?") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                for (n in 2..Prefs.MAX_TABS_LIMIT) {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { onPick(n) }
+                            .padding(vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(selected = n == current, onClick = { onPick(n) })
+                        Spacer(Modifier.width(8.dp))
+                        Box(
+                            Modifier
+                                .size(12.dp)
+                                .background(BD.tabColor(n - 1), RoundedCornerShape(50)),
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Text("$n pestañas", style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onDismiss) { Text("CANCELAR") } },
+    )
 }
 
 @Composable

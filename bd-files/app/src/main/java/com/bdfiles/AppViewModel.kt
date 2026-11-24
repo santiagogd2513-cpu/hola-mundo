@@ -46,10 +46,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** Una pestaña abierta. */
-class Tab(sourceId: String, path: String, title: String) {
+class Tab(sourceId: String, path: String, title: String, atHome: Boolean = true) {
     var sourceId by mutableStateOf(sourceId)
     var path by mutableStateOf(path)
     var title by mutableStateOf(title)
+    /** true si esta pestaña está en la pantalla de inicio en vez de en una carpeta. */
+    var atHome by mutableStateOf(atHome)
     var items = mutableStateListOf<FileItem>()
     var loading by mutableStateOf(false)
     var error by mutableStateOf<String?>(null)
@@ -171,13 +173,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     // ---------------------------------------------------------- pestañas
 
     private fun restoreTabs() {
-        val saved = prefs.openTabs.filter { it.first == "local" || it.first.startsWith("vol:") }
-        if (saved.isEmpty() || !prefs.tabsEnabled) {
-            tabs.add(Tab("local", internalRoot, "Interno"))
-        } else {
-            saved.take(prefs.maxTabs).forEach { (sid, path) ->
-                tabs.add(Tab(sid, path, nameOf(path)))
-            }
+        val saved = prefs.openTabs
+        val count = if (prefs.tabsEnabled) prefs.maxTabs else 1
+        for (k in 0 until count) {
+            val (sid, path) = saved.getOrNull(k) ?: ("local" to internalRoot)
+            val ok = sid == "local" || sid.startsWith("vol:") || sid == "shizuku"
+            tabs.add(
+                if (ok) Tab(sid, path, nameOf(path)) else Tab("local", internalRoot, "Inicio"),
+            )
         }
         activeTabIndex = 0
         reload()
@@ -187,32 +190,73 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         prefs.openTabs = tabs.map { it.sourceId to it.path }
     }
 
+    /** Ajusta cuántas pestañas hay, sin perder las que ya estaban. */
+    fun applyTabCount(count: Int) {
+        val n = count.coerceIn(1, Prefs.MAX_TABS_LIMIT)
+        while (tabs.size > n) tabs.removeAt(tabs.lastIndex)
+        while (tabs.size < n) tabs.add(Tab("local", internalRoot, "Inicio"))
+        if (activeTabIndex >= tabs.size) activeTabIndex = tabs.lastIndex
+        prefs.maxTabs = n
+        saveTabs()
+        bump()
+    }
+
+    /** Texto que se enseña en la pestaña: dónde está. */
+    fun tabLabel(tab: Tab): String = when {
+        tab.atHome -> "Inicio"
+        tab.path.trimEnd('/') == runCatching { source(tab.sourceId).rootPath }.getOrNull()?.trimEnd('/') ->
+            runCatching { source(tab.sourceId).title }.getOrDefault("Carpeta")
+        else -> nameOf(tab.path)
+    }
+
     fun selectTab(index: Int) {
         if (index !in tabs.indices) return
         activeTabIndex = index
         selected.clear()
-        reload()
+        clearSearch()
+        val tab = tabs[index]
+        screen = if (tab.atHome) Screen.HOME else Screen.BROWSER
+        if (!tab.atHome) reload()
     }
 
+    /** Abre algo en la primera pestaña que esté en el inicio, o en la siguiente. */
     fun newTab(sourceId: String = "local", path: String = internalRoot) {
-        if (tabs.size >= prefs.maxTabs) {
-            message = "Ya tienes el máximo de ${prefs.maxTabs} pestañas abiertas."
-            return
+        val free = tabs.indexOfFirst { it.atHome && it !== activeTab }
+        val index = when {
+            free >= 0 -> free
+            tabs.size < prefs.maxTabs -> {
+                tabs.add(Tab("local", internalRoot, "Inicio"))
+                prefs.maxTabs = tabs.size
+                tabs.lastIndex
+            }
+            else -> {
+                message = "Ya tienes las ${tabs.size} pestañas ocupadas. " +
+                    "Puedes subir el número en Ajustes → Interfaz y estilo."
+                return
+            }
         }
-        tabs.add(Tab(sourceId, path, nameOf(path)))
-        activeTabIndex = tabs.lastIndex
+        val tab = tabs[index]
+        tab.sourceId = sourceId
+        tab.path = path
+        tab.atHome = false
+        activeTabIndex = index
         selected.clear()
+        screen = Screen.BROWSER
         saveTabs()
         reload()
     }
 
+    /** Devuelve una pestaña al inicio (no la quita: las pestañas son fijas). */
     fun closeTab(index: Int) {
-        if (tabs.size <= 1 || index !in tabs.indices) return
-        tabs.removeAt(index)
-        if (activeTabIndex >= tabs.size) activeTabIndex = tabs.lastIndex
+        if (index !in tabs.indices) return
+        val tab = tabs[index]
+        tab.atHome = true
+        tab.sourceId = "local"
+        tab.path = internalRoot
+        if (index == activeTabIndex) screen = Screen.HOME
         selected.clear()
         saveTabs()
-        reload()
+        bump()
     }
 
     // ---------------------------------------------------------- navegación
@@ -256,6 +300,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val tab = activeTab ?: return
         tab.sourceId = sourceId
         tab.path = path
+        tab.atHome = false
         selected.clear()
         clearSearch()
         screen = Screen.BROWSER
@@ -279,10 +324,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
         val root = source(tab.sourceId).rootPath
         if (tab.path.trimEnd('/') == root.trimEnd('/')) {
+            tab.atHome = true
             screen = Screen.HOME
             return true
         }
         val parent = parentOf(tab.path) ?: run {
+            tab.atHome = true
             screen = Screen.HOME
             return true
         }
