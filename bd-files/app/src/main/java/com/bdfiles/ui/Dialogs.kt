@@ -5,7 +5,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.FlowRowScope
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -69,13 +68,12 @@ import com.bdfiles.ui.theme.BD
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun DialogActions(content: @Composable FlowRowScope.() -> Unit) {
+fun DialogActions(content: @Composable () -> Unit) {
     FlowRow(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
         verticalArrangement = Arrangement.spacedBy(6.dp),
-        content = content,
-    )
+    ) { content() }
 }
 
 /**
