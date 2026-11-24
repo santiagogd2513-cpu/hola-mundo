@@ -224,17 +224,28 @@ fun HomeScreen(vm: AppViewModel) {
             // ------------------------------------------------ más
             item { SectionHeader("Más", "⚡") }
             item {
-                HomeRow("🗑️", "Papelera", "Lo borrado que aún se puede recuperar", BD.TextLow) { vm.openTrash() }
+                HomeRow(
+                    emoji = "🗑️",
+                    title = "Papelera",
+                    subtitle = "Lo borrado que aún se puede recuperar",
+                    tint = BD.TextLow,
+                ) { vm.openTrash() }
             }
             item {
-                HomeRow("🔑", "Permisos de apps", "Dar acceso al almacenamiento a emuladores y demás", BD.Success) {
-                    vm.screen = Screen.APP_PERMISSIONS
-                }
+                HomeRow(
+                    emoji = "🔑",
+                    title = "Permisos de apps",
+                    subtitle = "Dar acceso al almacenamiento a emuladores y demás",
+                    tint = BD.Success,
+                ) { vm.screen = Screen.APP_PERMISSIONS }
             }
             item {
-                HomeRow("⚙️", "Ajustes", "Interfaz, archivos, verificaciones y acerca de", BD.LightPurple) {
-                    vm.screen = Screen.SETTINGS
-                }
+                HomeRow(
+                    emoji = "⚙️",
+                    title = "Ajustes",
+                    subtitle = "Interfaz, archivos, verificaciones y acerca de",
+                    tint = BD.LightPurple,
+                ) { vm.screen = Screen.SETTINGS }
             }
             item { Spacer(Modifier.height(36.dp)) }
         }
