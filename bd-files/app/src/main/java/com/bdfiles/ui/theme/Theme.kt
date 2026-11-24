@@ -18,30 +18,40 @@ object BD {
     val Violet = Color(0xFFB06BFF)
     val Purple = Color(0xFF8E3BE8)
     val LightPurple = Color(0xFFD8B4FF)
-    val Cyan = Color(0xFF22E3FF)
-    val CyanSoft = Color(0xFF8BF1FF)
+    val Cyan = Color(0xFF00EAFF)
+    val CyanSoft = Color(0xFF7DF4FF)
+    /** Azul eléctrico, para que el azul tenga más peso junto al cian. */
+    val Blue = Color(0xFF3D7BFF)
+    val BlueSoft = Color(0xFF8FB4FF)
+    val BlueDeep = Color(0xFF1B3B8F)
 
     // Fondos oscuros con un punto morado, para que no se vea gris muerto.
-    val Night = Color(0xFF0B0712)
-    val Surface = Color(0xFF171024)
-    val SurfaceHigh = Color(0xFF221733)
-    val SurfaceCard = Color(0xFF1D1430)
-    val Outline = Color(0xFF3A2B55)
+    val Night = Color(0xFF080A16)
+    val Surface = Color(0xFF141428)
+    val SurfaceHigh = Color(0xFF1E1E3A)
+    val SurfaceCard = Color(0xFF191933)
+    val Outline = Color(0xFF34356B)
     val TextHigh = Color(0xFFF2EAFC)
-    val TextLow = Color(0xFFAE9ECB)
+    val TextLow = Color(0xFFA6A6D0)
     val Danger = Color(0xFFFF5A7A)
     val Success = Color(0xFF4BE3A0)
     val Warning = Color(0xFFFFC24B)
 
     /** Degradado principal: rosa → violeta → cian. Se usa en la barra de progreso y los acentos. */
-    val gradient = Brush.horizontalGradient(listOf(Pink, Violet, Cyan))
+    val gradient = Brush.horizontalGradient(listOf(Pink, Violet, Blue, Cyan))
 
     val gradientSoft = Brush.horizontalGradient(
-        listOf(Pink.copy(alpha = 0.30f), Violet.copy(alpha = 0.30f), Cyan.copy(alpha = 0.30f)),
+        listOf(
+            Pink.copy(alpha = 0.30f), Violet.copy(alpha = 0.30f),
+            Blue.copy(alpha = 0.35f), Cyan.copy(alpha = 0.40f),
+        ),
     )
 
+    /** Degradado azul, para las barras de espacio y los acentos fríos. */
+    val blueGradient = Brush.horizontalGradient(listOf(Blue, Cyan))
+
     fun headerGradient() = Brush.verticalGradient(
-        listOf(Color(0xFF241337), Color(0xFF150E24)),
+        listOf(Color(0xFF26173F), Color(0xFF121A2E)),
     )
 }
 
@@ -52,11 +62,11 @@ private val DarkColors = darkColorScheme(
     onPrimaryContainer = Color(0xFFF4E9FF),
     secondary = BD.Pink,
     onSecondary = Color(0xFF330A22),
-    secondaryContainer = Color(0xFF3D1636),
+    secondaryContainer = Color(0xFF2B2A5E),
     onSecondaryContainer = BD.PinkSoft,
     tertiary = BD.Cyan,
-    onTertiary = Color(0xFF00242B),
-    tertiaryContainer = Color(0xFF0E3B44),
+    onTertiary = Color(0xFF002630),
+    tertiaryContainer = Color(0xFF123A6B),
     onTertiaryContainer = BD.CyanSoft,
     background = BD.Night,
     onBackground = BD.TextHigh,
@@ -66,9 +76,9 @@ private val DarkColors = darkColorScheme(
     onSurfaceVariant = BD.TextLow,
     surfaceContainer = BD.SurfaceCard,
     surfaceContainerHigh = BD.SurfaceHigh,
-    surfaceContainerHighest = Color(0xFF2A1D3E),
+    surfaceContainerHighest = Color(0xFF252552),
     outline = BD.Outline,
-    outlineVariant = Color(0xFF2B2040),
+    outlineVariant = Color(0xFF26264A),
     error = BD.Danger,
     onError = Color(0xFF3B0410),
     scrim = Color(0xCC07040D),

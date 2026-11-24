@@ -61,7 +61,7 @@ class Tab(sourceId: String, path: String, title: String) {
 class Clipboard(val sourceId: String, val items: List<FileItem>, val isMove: Boolean)
 
 /** Pantallas aparte del explorador. */
-enum class Screen { BROWSER, SHORTCUTS, CLOUD, SETTINGS, APP_PERMISSIONS }
+enum class Screen { HOME, BROWSER, SHORTCUTS, CLOUD, SETTINGS, APP_PERMISSIONS }
 
 class ConfirmRequest(
     val title: String,
@@ -116,7 +116,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---------------------------------------------------------- estado general
 
-    var screen by mutableStateOf(Screen.BROWSER)
+    var screen by mutableStateOf(Screen.HOME)
     val tabs = mutableStateListOf<Tab>()
     var activeTabIndex by mutableIntStateOf(0)
         private set
@@ -262,7 +262,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         reload()
     }
 
-    /** Sube un nivel. Devuelve false si ya estamos en la raíz. */
+    /**
+     * Vuelve atrás: quita la selección, cierra la búsqueda, sube una carpeta
+     * y, si ya estamos en la raíz, va a la pantalla de inicio.
+     * Devuelve false solo si no quedaba nada que hacer.
+     */
     fun goUp(): Boolean {
         val tab = activeTab ?: return false
         if (selected.isNotEmpty()) {
@@ -273,13 +277,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             clearSearch()
             return true
         }
-        if (screen != Screen.BROWSER) {
-            screen = Screen.BROWSER
+        val root = source(tab.sourceId).rootPath
+        if (tab.path.trimEnd('/') == root.trimEnd('/')) {
+            screen = Screen.HOME
             return true
         }
-        val root = source(tab.sourceId).rootPath
-        if (tab.path.trimEnd('/') == root.trimEnd('/')) return false
-        val parent = parentOf(tab.path) ?: return false
+        val parent = parentOf(tab.path) ?: run {
+            screen = Screen.HOME
+            return true
+        }
         tab.path = parent
         reload()
         return true

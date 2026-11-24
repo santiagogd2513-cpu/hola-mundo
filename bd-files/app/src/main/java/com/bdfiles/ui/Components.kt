@@ -268,7 +268,7 @@ fun SectionHeader(text: String, emoji: String = "") {
         Text(
             text.uppercase(),
             style = MaterialTheme.typography.labelLarge,
-            color = BD.Violet,
+            color = BD.CyanSoft,
             fontSize = 12.sp,
             letterSpacing = 1.2.sp,
         )

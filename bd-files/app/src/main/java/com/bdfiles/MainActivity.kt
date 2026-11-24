@@ -30,6 +30,7 @@ import com.bdfiles.ui.AppPermissionsScreen
 import com.bdfiles.ui.ArchiveSheet
 import com.bdfiles.ui.BrowserScreen
 import com.bdfiles.ui.CloudScreen
+import com.bdfiles.ui.HomeScreen
 import com.bdfiles.ui.ConfirmDialog
 import com.bdfiles.ui.DeleteDialog
 import com.bdfiles.ui.InfoDialog
@@ -83,23 +84,19 @@ private fun AppRoot(vm: AppViewModel) {
         when {
             vm.archiveToBrowse != null -> vm.closeArchive()
             vm.itemMenu != null -> vm.itemMenu = null
-            vm.screen != Screen.BROWSER -> vm.screen = Screen.BROWSER
-            else -> {
-                // goUp devuelve false cuando ya estamos en la raíz.
-                if (!vm.goUp()) {
-                    // No cerramos la app sin avisar: solo se queda quieta.
-                    vm.message = "Ya estás en la carpeta principal. Usa el botón de inicio para salir."
-                }
-            }
+            vm.screen == Screen.BROWSER -> vm.goUp()
+            vm.screen != Screen.HOME -> vm.screen = Screen.HOME
+            else -> vm.message = "Ya estás en el inicio. Usa el botón de inicio del móvil para salir."
         }
     }
 
     when (vm.screen) {
+        Screen.HOME -> HomeScreen(vm)
         Screen.BROWSER -> BrowserScreen(vm)
-        Screen.SETTINGS -> SettingsScreen(vm) { vm.screen = Screen.BROWSER }
-        Screen.SHORTCUTS -> ShortcutsScreen(vm) { vm.screen = Screen.BROWSER }
-        Screen.CLOUD -> CloudScreen(vm) { vm.screen = Screen.BROWSER }
-        Screen.APP_PERMISSIONS -> AppPermissionsScreen(vm) { vm.screen = Screen.BROWSER }
+        Screen.SETTINGS -> SettingsScreen(vm) { vm.screen = Screen.HOME }
+        Screen.SHORTCUTS -> ShortcutsScreen(vm) { vm.screen = Screen.HOME }
+        Screen.CLOUD -> CloudScreen(vm) { vm.screen = Screen.HOME }
+        Screen.APP_PERMISSIONS -> AppPermissionsScreen(vm) { vm.screen = Screen.HOME }
     }
 
     // ------------------------------------------------------ diálogos
