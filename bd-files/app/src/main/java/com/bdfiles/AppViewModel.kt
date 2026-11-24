@@ -184,13 +184,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Dice si un almacenamiento se puede abrir ya o hay que pedir permiso antes. */
     fun volumeAction(v: StorageVolumes.Volume): VolumeAction {
+        // Lo primero, la ruta normal: es más rápida y es lo que funciona en la
+        // mayoría de móviles cuando la app tiene permiso de todos los archivos.
+        val path = v.path
+        if (path != null) {
+            val sourceId = if (path == internalRoot) "local" else "vol:$path"
+            return VolumeAction.Open(sourceId, path)
+        }
+        // Si no hay ruta, se usa el acceso que haya dado el usuario.
         val granted = prefs.grantedVolumes[v.key]
         if (granted != null && hasUriPermission(granted)) {
             return VolumeAction.Open("saf:$granted", "/")
-        }
-        if (v.path != null) {
-            val sourceId = if (v.path == internalRoot) "local" else "vol:${v.path}"
-            return VolumeAction.Open(sourceId, v.path)
         }
         return VolumeAction.AskPermission(v)
     }

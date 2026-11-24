@@ -12,9 +12,10 @@ import java.io.File
 /**
  * Los almacenamientos del móvil: interno, tarjetas y memorias USB.
  *
- * Android ya no deja entrar a las memorias USB por su ruta, ni con el permiso de
- * "todos los archivos": hay que pedirle acceso al sistema una vez. Por eso cada
- * almacenamiento dice si se puede abrir directamente o si hace falta dar permiso.
+ * Primero se intenta siempre abrirlos por su ruta de toda la vida, que es lo que
+ * funciona en la mayoría de móviles cuando la app tiene el permiso de "todos los
+ * archivos". Solo si esa ruta no se puede leer de verdad se pide permiso al
+ * sistema, que es lo que exigen algunos móviles con Android reciente.
  */
 object StorageVolumes {
 
@@ -32,71 +33,99 @@ object StorageVolumes {
         val needsPermission: Boolean get() = path == null
     }
 
-    fun list(context: Context): List<Volume> {
-        val out = ArrayList<Volume>()
-        val internalPath = Environment.getExternalStorageDirectory().absolutePath
-        out.add(Volume("Almacenamiento interno", internalPath, false, false, "internal", null))
+    /** Nombres de carpeta que no son almacenamientos de verdad. */
+    private val IGNORE = setOf(
+        "emulated", "self", "sdcard0", "sdcard", "container", "knox-emulated",
+        "enc_emulated", "system_ce", "system_de", "usbotg-bind",
+    )
 
-        val sm = runCatching { context.getSystemService(StorageManager::class.java) }.getOrNull()
-        if (sm != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            for (v in runCatching { sm.storageVolumes }.getOrDefault(emptyList())) {
-                addVolume(context, v, internalPath, out)
+    /** Una ruta sirve si existe, es carpeta y de verdad se puede listar. */
+    private fun usable(path: String?): String? {
+        if (path.isNullOrBlank()) return null
+        return runCatching {
+            val f = File(path)
+            if (f.isDirectory && f.listFiles() != null) path else null
+        }.getOrNull()
+    }
+
+    private fun firstUsable(vararg candidates: String?): String? =
+        candidates.firstNotNullOfOrNull { usable(it) }
+
+    fun list(context: Context): List<Volume> {
+        val byKey = LinkedHashMap<String, Volume>()
+        val internalPath = Environment.getExternalStorageDirectory().absolutePath
+        byKey["internal"] = Volume("Almacenamiento interno", internalPath, false, false, "internal", null)
+
+        // 1. Lo que declara el sistema: nombres de verdad y pistas de dónde está.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            val sm = runCatching { context.getSystemService(StorageManager::class.java) }.getOrNull()
+            for (v in runCatching { sm?.storageVolumes }.getOrNull().orEmpty()) {
+                fromSystem(context, v)?.let { byKey.putIfAbsent(it.key, it) }
             }
         }
 
-        // Por si el sistema no las declara: rutas donde se suelen montar.
-        for (base in listOf("/storage", "/mnt/media_rw")) {
-            val kids = File(base).listFiles() ?: continue
+        // 2. Rebuscar por las carpetas donde se montan: puede encontrar lo que el
+        //    sistema no declara, y también dar ruta a lo que se quedó sin ella.
+        for (base in listOf("/storage", "/mnt/media_rw", "/mnt/usb")) {
+            val kids = runCatching { File(base).listFiles() }.getOrNull() ?: continue
             for (k in kids) {
-                val p = k.absolutePath
-                if (!k.isDirectory) continue
-                if (k.name in setOf("emulated", "self", "sdcard0", "container", "knox-emulated")) continue
-                if (out.any { it.path == p || it.key == k.name }) continue
-                if (!k.canRead()) continue
-                val looksLikeUsb = k.name.matches(Regex("[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}"))
-                out.add(
-                    Volume(
-                        title = if (looksLikeUsb) "Memoria externa ${k.name}" else "Almacenamiento ${k.name}",
-                        path = p,
-                        removable = true,
-                        isUsb = base == "/mnt/media_rw",
-                        key = k.name,
-                        accessIntent = null,
-                    ),
+                val name = k.name
+                if (name in IGNORE) continue
+                val path = usable(k.absolutePath) ?: continue
+                if (path == internalPath) continue
+
+                val existing = byKey.values.firstOrNull { it.key == name || it.path == path }
+                if (existing != null) {
+                    // Si ya estaba pero sin ruta, ahora sí la tenemos.
+                    if (existing.path == null) {
+                        byKey[existing.key] = Volume(
+                            existing.title, path, existing.removable, existing.isUsb,
+                            existing.key, existing.accessIntent,
+                        )
+                    }
+                    continue
+                }
+                val looksLikeUuid = name.matches(Regex("[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}"))
+                byKey[name] = Volume(
+                    title = if (looksLikeUuid) "Memoria externa $name" else "Almacenamiento $name",
+                    path = path,
+                    removable = true,
+                    isUsb = base != "/storage" || looksLikeUuid,
+                    key = name,
+                    accessIntent = null,
                 )
             }
         }
-        return out
+
+        return byKey.values.toList()
     }
 
-    private fun addVolume(
-        context: Context,
-        v: StorageVolume,
-        internalPath: String,
-        out: ArrayList<Volume>,
-    ) {
-        if (runCatching { v.state }.getOrNull() != Environment.MEDIA_MOUNTED) return
-        if (v.isPrimary) return // ya está como almacenamiento interno
+    private fun fromSystem(context: Context, v: StorageVolume): Volume? {
+        if (runCatching { v.state }.getOrNull() != Environment.MEDIA_MOUNTED) return null
+        if (runCatching { v.isPrimary }.getOrDefault(false)) return null
 
         val description = runCatching { v.getDescription(context) }.getOrNull().orEmpty()
         val uuid = runCatching { v.uuid }.getOrNull()
-        val key = uuid ?: description.ifEmpty { "volumen${out.size}" }
-        if (out.any { it.key == key }) return
+        val key = uuid ?: description.ifEmpty { "volumen" }
 
-        // Ruta real, cuando el sistema la da y de verdad se puede leer.
-        val dir: File? = when {
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.R -> runCatching { v.directory }.getOrNull()
-            else -> runCatching {
-                val m = StorageVolume::class.java.getDeclaredMethod("getPathFile")
-                m.isAccessible = true
-                m.invoke(v) as? File
-            }.getOrNull()
+        // Se prueban todos los sitios donde puede estar, por orden.
+        val fromApi = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            runCatching { v.directory?.absolutePath }.getOrNull()
+        } else {
+            null
         }
-        val usablePath = dir?.takeIf { it.isDirectory && it.canRead() && (it.listFiles() != null) }
+        val fromReflection = reflectPath(v)
+        val path = firstUsable(
+            fromApi,
+            fromReflection,
+            uuid?.let { "/storage/$it" },
+            uuid?.let { "/mnt/media_rw/$it" },
+        )
 
         val looksUsb = description.contains("USB", true) ||
             description.contains("unidad", true) ||
-            (uuid?.matches(Regex("[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}")) == true && !description.contains("SD", true))
+            (uuid?.matches(Regex("[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}")) == true &&
+                !description.contains("SD", true) && !description.contains("tarjeta", true))
 
         val title = when {
             description.isNotEmpty() -> description
@@ -104,22 +133,37 @@ object StorageVolumes {
             else -> "Tarjeta de memoria"
         }
 
-        val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        val intent = if (path == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             runCatching { v.createOpenDocumentTreeIntent() }.getOrNull()
         } else {
             null
         }
 
-        out.add(
-            Volume(
-                title = title,
-                path = usablePath?.absolutePath,
-                removable = runCatching { v.isRemovable }.getOrDefault(true),
-                isUsb = looksUsb,
-                key = key,
-                accessIntent = intent,
-            ),
+        return Volume(
+            title = title,
+            path = path,
+            removable = runCatching { v.isRemovable }.getOrDefault(true),
+            isUsb = looksUsb,
+            key = key,
+            accessIntent = intent,
         )
+    }
+
+    /** En móviles antiguos la ruta solo está en métodos internos. */
+    private fun reflectPath(v: StorageVolume): String? {
+        for (name in listOf("getPath", "getPathFile")) {
+            val value = runCatching {
+                val m = StorageVolume::class.java.getDeclaredMethod(name)
+                m.isAccessible = true
+                when (val r = m.invoke(v)) {
+                    is String -> r
+                    is File -> r.absolutePath
+                    else -> null
+                }
+            }.getOrNull()
+            if (value != null) return value
+        }
+        return null
     }
 
     /** Intención genérica para elegir un almacenamiento, si el sistema no da una concreta. */
@@ -142,5 +186,12 @@ object StorageVolumes {
             name == "primary" -> "Almacenamiento interno"
             else -> "Almacenamiento $name"
         }
+    }
+
+    /** Texto de ayuda para cuando un almacenamiento no se puede leer por ruta. */
+    fun whyPermission(v: Volume): String = buildString {
+        append("Este móvil no deja que BD Files entre a “${v.title}” por su carpeta.\n\n")
+        append("Pasa en algunos Android recientes con las memorias USB. ")
+        append("Dándole acceso una vez, queda guardado y luego entras directo.")
     }
 }

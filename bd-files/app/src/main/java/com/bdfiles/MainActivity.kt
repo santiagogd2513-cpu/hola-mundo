@@ -82,6 +82,8 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         vm.refreshShizuku()
+        // Por si has conectado una memoria o acabas de dar el permiso de archivos.
+        vm.refreshVolumes()
     }
 
     override fun onDestroy() {

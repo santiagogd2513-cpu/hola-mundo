@@ -126,7 +126,7 @@ fun HomeScreen(vm: AppViewModel, onAskVolumeAccess: (com.bdfiles.core.StorageVol
                     },
                     title = v.title,
                     subtitle = when {
-                        needsPermission -> "Toca para dar acceso a este almacenamiento"
+                        needsPermission -> "Este Android no deja entrar por carpeta: toca para dar acceso"
                         used != null -> "${formatSize(free)} libres de ${formatSize(total)}"
                         else -> v.path ?: "Listo para abrir"
                     },
