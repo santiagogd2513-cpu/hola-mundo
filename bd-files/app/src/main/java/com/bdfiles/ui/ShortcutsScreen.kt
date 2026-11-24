@@ -54,6 +54,7 @@ fun ShortcutsScreen(vm: AppViewModel, onBack: () -> Unit) {
     var revision by remember { mutableIntStateOf(0) }
     val shortcuts = remember(revision, vm.uiRevision) { vm.prefs.shortcuts }
     val favorites = remember(revision, vm.uiRevision) { vm.prefs.favorites }
+    val pinned = remember(revision, vm.uiRevision) { vm.prefs.pinned.toList() }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -142,7 +143,6 @@ fun ShortcutsScreen(vm: AppViewModel, onBack: () -> Unit) {
             }
 
             item { SectionHeader("Carpetas ancladas", "📌") }
-            val pinned = remember(revision, vm.uiRevision) { vm.prefs.pinned.toList() }
             if (pinned.isEmpty()) {
                 item {
                     Text(

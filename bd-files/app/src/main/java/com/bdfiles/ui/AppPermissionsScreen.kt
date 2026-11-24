@@ -52,7 +52,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -231,7 +232,18 @@ fun AppPermissionsScreen(vm: AppViewModel, onBack: () -> Unit) {
 @Composable
 private fun AppRow(app: AppPermissions.AppInfo, onClick: () -> Unit) {
     val context = LocalContext.current
-    val icon = remember(app.packageName) { AppPermissions.icon(context, app.packageName) }
+    val icon: ImageBitmap? = remember(app.packageName) {
+        AppPermissions.icon(context, app.packageName)?.let { d ->
+            runCatching {
+                val size = 96
+                val bmp = android.graphics.Bitmap.createBitmap(size, size, android.graphics.Bitmap.Config.ARGB_8888)
+                val c = android.graphics.Canvas(bmp)
+                d.setBounds(0, 0, size, size)
+                d.draw(c)
+                bmp.asImageBitmap()
+            }.getOrNull()
+        }
+    }
     Row(
         Modifier
             .fillMaxWidth()
@@ -246,12 +258,11 @@ private fun AppRow(app: AppPermissions.AppInfo, onClick: () -> Unit) {
             contentAlignment = Alignment.Center,
         ) {
             if (icon != null) {
-                androidx.compose.foundation.Canvas(Modifier.size(32.dp)) {
-                    drawIntoCanvas { canvas ->
-                        icon.setBounds(0, 0, size.width.toInt(), size.height.toInt())
-                        icon.draw(canvas.nativeCanvas)
-                    }
-                }
+                androidx.compose.foundation.Image(
+                    bitmap = icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(32.dp),
+                )
             } else {
                 Text("📱", fontSize = 19.sp)
             }
