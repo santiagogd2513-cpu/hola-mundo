@@ -78,20 +78,32 @@ fun ShortcutsScreen(vm: AppViewModel, onBack: () -> Unit) {
         ) {
             item { SectionHeader("Almacenamientos", "💾") }
             items(vm.volumes) { v ->
-                val sourceId = if (v.path == vm.internalRoot) "local" else "vol:${v.path}"
-                val src = runCatching { vm.source(sourceId) }.getOrNull()
+                val action = vm.volumeAction(v)
+                val src = (action as? AppViewModel.VolumeAction.Open)
+                    ?.let { runCatching { vm.source(it.sourceId) }.getOrNull() }
                 val free = src?.freeSpace() ?: -1
                 val total = src?.totalSpace() ?: -1
                 BigRow(
-                    emoji = if (v.removable) "💽" else "📱",
+                    emoji = when {
+                        v.isUsb -> "🔌"
+                        v.removable -> "💽"
+                        else -> "📱"
+                    },
                     title = v.title,
-                    subtitle = if (free >= 0 && total > 0) {
-                        "${formatSize(free)} libres de ${formatSize(total)}"
-                    } else v.path,
+                    subtitle = when {
+                        action is AppViewModel.VolumeAction.AskPermission ->
+                            "Hace falta dar acceso desde el inicio"
+                        free >= 0 && total > 0 -> "${formatSize(free)} libres de ${formatSize(total)}"
+                        else -> v.path ?: "Listo"
+                    },
                     tint = if (v.removable) BD.Cyan else BD.Violet,
                 ) {
-                    vm.navigate(v.path, sourceId)
-                    onBack()
+                    if (action is AppViewModel.VolumeAction.Open) {
+                        vm.navigate(action.path, action.sourceId)
+                        onBack()
+                    } else {
+                        onBack()
+                    }
                 }
             }
 

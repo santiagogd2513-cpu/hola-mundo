@@ -25,6 +25,7 @@ import com.bdfiles.core.LocalSource
 import com.bdfiles.core.OpProgress
 import com.bdfiles.core.OpResult
 import com.bdfiles.core.ShizukuBridge
+import com.bdfiles.core.SafSource
 import com.bdfiles.core.ShizukuSource
 import com.bdfiles.core.StorageVolumes
 import com.bdfiles.core.UserError
@@ -97,6 +98,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var volumes by mutableStateOf(emptyList<StorageVolumes.Volume>())
         private set
 
+    /** Volumen que está esperando a que el usuario conceda el permiso. */
+    var pendingVolume: StorageVolumes.Volume? = null
+
     fun source(id: String): FileSource = sources.getOrPut(id) {
         when {
             id == "local" -> LocalSource("local", "Almacenamiento interno", internalRoot)
@@ -105,6 +109,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 val path = id.removePrefix("vol:")
                 val v = volumes.firstOrNull { it.path == path }
                 LocalSource(id, v?.title ?: nameOf(path), path)
+            }
+            id.startsWith("saf:") -> {
+                val uri = Uri.parse(id.removePrefix("saf:"))
+                val vol = volumes.firstOrNull { prefs.grantedVolumes[it.key] == uri.toString() }
+                SafSource(ctx, uri, vol?.title ?: StorageVolumes.titleFromUri(uri), id)
             }
             id.startsWith("ftp:") -> {
                 val name = id.removePrefix("ftp:")
@@ -160,6 +169,79 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         volumes = runCatching { StorageVolumes.list(ctx) }.getOrDefault(emptyList())
         restoreTabs()
         refreshShizuku()
+    }
+
+    /** Lo que hay que hacer para abrir un almacenamiento. */
+    sealed class VolumeAction {
+        class Open(val sourceId: String, val path: String) : VolumeAction()
+        class AskPermission(val volume: StorageVolumes.Volume) : VolumeAction()
+    }
+
+    fun refreshVolumes() {
+        volumes = runCatching { StorageVolumes.list(ctx) }.getOrDefault(emptyList())
+        bump()
+    }
+
+    /** Dice si un almacenamiento se puede abrir ya o hay que pedir permiso antes. */
+    fun volumeAction(v: StorageVolumes.Volume): VolumeAction {
+        val granted = prefs.grantedVolumes[v.key]
+        if (granted != null && hasUriPermission(granted)) {
+            return VolumeAction.Open("saf:$granted", "/")
+        }
+        if (v.path != null) {
+            val sourceId = if (v.path == internalRoot) "local" else "vol:${v.path}"
+            return VolumeAction.Open(sourceId, v.path)
+        }
+        return VolumeAction.AskPermission(v)
+    }
+
+    fun openVolume(v: StorageVolumes.Volume, onNeedPermission: (StorageVolumes.Volume) -> Unit) {
+        when (val a = volumeAction(v)) {
+            is VolumeAction.Open -> navigate(a.path, a.sourceId)
+            is VolumeAction.AskPermission -> onNeedPermission(a.volume)
+        }
+    }
+
+    private fun hasUriPermission(uri: String): Boolean =
+        ctx.contentResolver.persistedUriPermissions.any {
+            it.uri.toString() == uri && it.isReadPermission
+        }
+
+    /** Guarda el acceso que acaba de conceder el usuario y entra en el almacenamiento. */
+    fun onVolumeAccessGranted(uri: Uri, volumeKey: String?) {
+        runCatching {
+            ctx.contentResolver.takePersistableUriPermission(
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+            )
+        }.onFailure {
+            message = "Android no dejó guardar el permiso: ${it.message}"
+            return
+        }
+        val key = volumeKey ?: StorageVolumes.titleFromUri(uri)
+        prefs.grantVolume(key, uri.toString())
+        refreshVolumes()
+        sources.remove("saf:$uri")?.let { runCatching { it.close() } }
+        navigate("/", "saf:$uri")
+        message = "Acceso concedido. Ya puedes entrar y copiar archivos."
+    }
+
+    fun forgetVolume(key: String) {
+        val uri = prefs.grantedVolumes[key]
+        prefs.forgetVolume(key)
+        if (uri != null) sources.remove("saf:$uri")?.let { runCatching { it.close() } }
+        refreshVolumes()
+    }
+
+    /** Pasa a la pestaña anterior o siguiente, dando la vuelta al llegar al final. */
+    fun nextTab() {
+        if (tabs.size <= 1) return
+        selectTab((activeTabIndex + 1) % tabs.size)
+    }
+
+    fun prevTab() {
+        if (tabs.size <= 1) return
+        selectTab((activeTabIndex - 1 + tabs.size) % tabs.size)
     }
 
     fun refreshShizuku() {

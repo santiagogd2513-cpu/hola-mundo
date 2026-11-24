@@ -21,6 +21,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -108,6 +110,29 @@ fun TabsBar(vm: AppViewModel) {
         }
         Spacer(Modifier.size(4.dp))
     }
+}
+
+/**
+ * Deslizar a los lados para cambiar de pestaña: a la izquierda pasa a la
+ * siguiente y a la derecha a la anterior.
+ */
+fun Modifier.swipeBetweenTabs(vm: AppViewModel): Modifier = this.pointerInput(Unit) {
+    val threshold = 72.dp.toPx()
+    var total = 0f
+    detectHorizontalDragGestures(
+        onDragStart = { total = 0f },
+        onDragEnd = {
+            if (vm.prefs.tabsEnabled && vm.tabs.size > 1) {
+                when {
+                    total > threshold -> vm.prevTab()
+                    total < -threshold -> vm.nextTab()
+                }
+            }
+            total = 0f
+        },
+        onDragCancel = { total = 0f },
+        onHorizontalDrag = { _, delta -> total += delta },
+    )
 }
 
 /** Texto oscuro sobre colores claros y blanco sobre los oscuros. */

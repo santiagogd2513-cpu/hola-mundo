@@ -124,7 +124,8 @@ fun BrowserScreen(vm: AppViewModel) {
         Box(
             Modifier
                 .padding(pad)
-                .fillMaxSize(),
+                .fillMaxSize()
+                .swipeBetweenTabs(vm),
         ) {
             val showing: List<FileItem> = if (vm.searching) vm.searchResults else tab.items
 

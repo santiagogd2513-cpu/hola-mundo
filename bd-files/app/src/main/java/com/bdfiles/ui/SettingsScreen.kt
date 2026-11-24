@@ -254,18 +254,39 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
             // ---------------------------------------------- almacenamiento
             SectionHeader("Almacenamiento", "💾")
             vm.volumes.forEach { v ->
-                val src = runCatching { vm.source(if (v.path == vm.internalRoot) "local" else "vol:${v.path}") }.getOrNull()
+                val action = vm.volumeAction(v)
+                val src = (action as? AppViewModel.VolumeAction.Open)
+                    ?.let { runCatching { vm.source(it.sourceId) }.getOrNull() }
                 val free = src?.freeSpace() ?: -1
                 val total = src?.totalSpace() ?: -1
                 SettingRow(
                     v.title,
-                    if (free >= 0 && total > 0) "${formatSize(free)} libres de ${formatSize(total)}" else v.path,
+                    when {
+                        action is AppViewModel.VolumeAction.AskPermission ->
+                            "Hace falta dar acceso desde la pantalla de inicio"
+                        free >= 0 && total > 0 -> "${formatSize(free)} libres de ${formatSize(total)}"
+                        else -> v.path ?: "Listo"
+                    },
                     onClick = {
-                        vm.navigate(v.path, if (v.path == vm.internalRoot) "local" else "vol:${v.path}")
-                        onBack()
+                        if (action is AppViewModel.VolumeAction.Open) {
+                            vm.navigate(action.path, action.sourceId)
+                            onBack()
+                        } else {
+                            vm.screen = Screen.HOME
+                        }
                     },
                 ) {
                     Text("›", fontSize = 22.sp, color = BD.TextLow)
+                }
+            }
+            // Accesos a memorias USB ya concedidos
+            vm.prefs.grantedVolumes.forEach { (key, _) ->
+                if (vm.volumes.none { it.key == key }) {
+                    SettingRow(
+                        key,
+                        "Permiso guardado de un almacenamiento que ahora no está conectado",
+                        onClick = { vm.forgetVolume(key) },
+                    ) { Text("Olvidar", style = MaterialTheme.typography.bodySmall, color = BD.Danger) }
                 }
             }
             if (vm.shizukuReady) {

@@ -59,7 +59,7 @@ import java.io.File
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(vm: AppViewModel) {
+fun HomeScreen(vm: AppViewModel, onAskVolumeAccess: (com.bdfiles.core.StorageVolumes.Volume) -> Unit) {
     var revision by remember { mutableIntStateOf(0) }
     val shortcuts = remember(revision, vm.uiRevision) { vm.prefs.shortcuts }
     val favorites = remember(revision, vm.uiRevision) { vm.prefs.favorites }
@@ -100,23 +100,48 @@ fun HomeScreen(vm: AppViewModel) {
         LazyColumn(
             Modifier
                 .padding(pad)
-                .fillMaxSize(),
+                .fillMaxSize()
+                .swipeBetweenTabs(vm),
         ) {
             // ------------------------------------------------ dispositivos
-            item { SectionHeader("Dispositivos", "📱") }
-            items(vm.volumes) { v ->
-                val sourceId = if (v.path == vm.internalRoot) "local" else "vol:${v.path}"
-                val src = remember(v.path, revision) { runCatching { vm.source(sourceId) }.getOrNull() }
+            item {
+                SectionHeaderWithAction("Dispositivos", "📱", "Buscar") { vm.refreshVolumes() }
+            }
+            items(vm.volumes, key = { it.key }) { v ->
+                val action = remember(v.key, revision, vm.uiRevision) { vm.volumeAction(v) }
+                val needsPermission = action is AppViewModel.VolumeAction.AskPermission
+                val src = remember(v.key, revision, vm.uiRevision) {
+                    if (action is AppViewModel.VolumeAction.Open) {
+                        runCatching { vm.source(action.sourceId) }.getOrNull()
+                    } else null
+                }
                 val free = src?.freeSpace() ?: -1
                 val total = src?.totalSpace() ?: -1
                 val used = if (total > 0 && free >= 0) ((total - free).toFloat() / total).coerceIn(0f, 1f) else null
                 HomeRow(
-                    emoji = if (v.removable) "💽" else "📱",
+                    emoji = when {
+                        v.isUsb -> "🔌"
+                        v.removable -> "💽"
+                        else -> "📱"
+                    },
                     title = v.title,
-                    subtitle = if (used != null) "${formatSize(free)} libres de ${formatSize(total)}" else v.path,
-                    tint = BD.Blue,
+                    subtitle = when {
+                        needsPermission -> "Toca para dar acceso a este almacenamiento"
+                        used != null -> "${formatSize(free)} libres de ${formatSize(total)}"
+                        else -> v.path ?: "Listo para abrir"
+                    },
+                    tint = if (needsPermission) BD.Warning else BD.Blue,
                     bar = used,
-                ) { vm.navigate(v.path, sourceId) }
+                ) { vm.openVolume(v) { vol -> onAskVolumeAccess(vol) } }
+            }
+            item {
+                HomeRow(
+                    emoji = "🔌",
+                    title = "Conectar una memoria USB",
+                    subtitle = "Si no te sale arriba, tócame y elígela a mano",
+                    tint = BD.Cyan,
+                    showChevron = false,
+                ) { onAskVolumeAccess(usbPlaceholder()) }
             }
             if (vm.shizukuReady) {
                 item {
@@ -253,6 +278,16 @@ fun HomeScreen(vm: AppViewModel) {
         }
     }
 }
+
+/** Volumen de mentira para pedir acceso a mano cuando el sistema no lo declara. */
+private fun usbPlaceholder() = com.bdfiles.core.StorageVolumes.Volume(
+    title = "Memoria externa",
+    path = null,
+    removable = true,
+    isUsb = true,
+    key = "manual",
+    accessIntent = null,
+)
 
 /** Acorta la ruta para que quepa: quita la parte del almacenamiento interno. */
 private fun shortPath(path: String, root: String): String {

@@ -3,7 +3,9 @@ package com.bdfiles
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -29,6 +31,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bdfiles.core.ShizukuBridge
+import com.bdfiles.core.StorageVolumes
 import com.bdfiles.ui.AppPermissionsScreen
 import com.bdfiles.ui.ArchiveSheet
 import com.bdfiles.ui.BrowserScreen
@@ -91,6 +94,32 @@ class MainActivity : ComponentActivity() {
 private fun AppRoot(vm: AppViewModel) {
     var askedPermission by remember { mutableStateOf(false) }
 
+    // Para pedirle a Android acceso a una memoria USB o tarjeta.
+    val volumeAccess = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        val uri = result.data?.data
+        val key = vm.pendingVolume?.key
+        vm.pendingVolume = null
+        if (uri != null) {
+            vm.onVolumeAccessGranted(uri, key)
+        }
+    }
+
+    fun askVolumeAccess(v: com.bdfiles.core.StorageVolumes.Volume) {
+        vm.pendingVolume = v
+        val intent = v.accessIntent ?: StorageVolumes.genericAccessIntent()
+        intent.addFlags(
+            android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
+                android.content.Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION,
+        )
+        runCatching { volumeAccess.launch(intent) }.onFailure {
+            vm.pendingVolume = null
+            vm.message = "Este móvil no deja elegir almacenamientos desde aquí."
+        }
+    }
+
     BackHandler(enabled = true) {
         when {
             vm.archiveToBrowse != null -> vm.closeArchive()
@@ -102,7 +131,7 @@ private fun AppRoot(vm: AppViewModel) {
     }
 
     when (vm.screen) {
-        Screen.HOME -> HomeScreen(vm)
+        Screen.HOME -> HomeScreen(vm) { v -> askVolumeAccess(v) }
         Screen.BROWSER -> BrowserScreen(vm)
         Screen.SETTINGS -> SettingsScreen(vm) { vm.screen = Screen.HOME }
         Screen.SHORTCUTS -> ShortcutsScreen(vm) { vm.screen = Screen.HOME }

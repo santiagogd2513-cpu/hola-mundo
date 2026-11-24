@@ -242,6 +242,31 @@ class Prefs(context: Context) {
         servers = servers.filterNot { it.name == name }
     }
 
+    // ---------------------------------------------------------- permisos de almacenamiento
+
+    /** Accesos concedidos a memorias USB y tarjetas: clave del volumen -> dirección. */
+    var grantedVolumes: Map<String, String>
+        get() {
+            val raw = sp.getString("grantedVolumes", null) ?: return emptyMap()
+            return runCatching {
+                val o = JSONObject(raw)
+                o.keys().asSequence().associateWith { o.getString(it) }
+            }.getOrDefault(emptyMap())
+        }
+        set(map) {
+            val o = JSONObject()
+            map.forEach { (k, v) -> o.put(k, v) }
+            sp.edit().putString("grantedVolumes", o.toString()).apply()
+        }
+
+    fun grantVolume(key: String, uri: String) {
+        grantedVolumes = grantedVolumes + (key to uri)
+    }
+
+    fun forgetVolume(key: String) {
+        grantedVolumes = grantedVolumes - key
+    }
+
     // ---------------------------------------------------------- pestañas abiertas
 
     /** Rutas de las pestañas abiertas, para recuperarlas al volver a entrar. */
