@@ -815,7 +815,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val roots = if (wholeDevice) {
                 buildList {
                     add(src.rootPath)
-                    if (tab.sourceId == "local") volumes.forEach { if (it.path != internalRoot) add(it.path) }
+                    if (tab.sourceId == "local") {
+                        // Las memorias que sí se pueden leer por ruta.
+                        volumes.forEach { v ->
+                            val p = v.path
+                            if (p != null && p != internalRoot) add(p)
+                        }
+                    }
                 }
             } else {
                 listOf(tab.path)
