@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -247,7 +248,7 @@ private fun CloudCard(drawable: Int, name: String, status: String, detail: Strin
 private fun ServerDialog(
     initial: FtpServerConfig?,
     onDismiss: () -> Unit,
-    onTest: (FtpServerConfig, (String) -> Unit) -> Unit,
+    onTest: (FtpServerConfig, (String, String) -> Unit) -> Unit,
     onSave: (FtpServerConfig) -> Unit,
     onConnect: (FtpServerConfig) -> Unit,
 ) {
@@ -259,16 +260,24 @@ private fun ServerDialog(
     var pass by remember { mutableStateOf(initial?.password ?: type.defaultPass) }
     var passive by remember { mutableStateOf(initial?.passive ?: type.defaultPassive) }
     var startPath by remember { mutableStateOf(initial?.startPath ?: type.startPath) }
+    var connections by remember { mutableStateOf(initial?.connections ?: type.defaultConnections) }
     var typeMenu by remember { mutableStateOf(false) }
     var testResult by remember { mutableStateOf<String?>(null) }
+    var testLog by remember { mutableStateOf<String?>(null) }
+    var showLog by remember { mutableStateOf(false) }
     var testing by remember { mutableStateOf(false) }
 
+    /** Al elegir un aparato se rellena todo con sus valores típicos. */
     fun applyType(t: FtpDeviceType) {
         type = t
         user = t.defaultUser
         pass = t.defaultPass
         passive = t.defaultPassive
         startPath = t.startPath
+        connections = t.defaultConnections
+        port = "21"
+        testResult = null
+        testLog = null
     }
 
     fun build() = FtpServerConfig(
@@ -280,6 +289,7 @@ private fun ServerDialog(
         deviceType = type,
         passive = passive,
         startPath = startPath.trim().ifEmpty { "/" },
+        connections = connections,
     )
 
     val valid = host.isNotBlank()
@@ -325,29 +335,119 @@ private fun ServerDialog(
                     }
                 }
 
+                Spacer(Modifier.height(12.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Conexiones a la vez", style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            if (type.connectionsLocked) {
+                                "Fijado en 1: las consolas se cuelgan si se les piden varias cosas a la vez."
+                            } else {
+                                "Más conexiones van más rápido, pero algunos servidores no lo admiten."
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (type.connectionsLocked) BD.Warning else BD.TextLow,
+                        )
+                    }
+                    Spacer(Modifier.width(10.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (!type.connectionsLocked) {
+                            TextButton(
+                                onClick = { if (connections > 1) connections-- },
+                                enabled = connections > 1,
+                            ) { Text("−", fontSize = 20.sp) }
+                        }
+                        Surface(shape = RoundedCornerShape(10.dp), color = BD.SurfaceHigh) {
+                            Text(
+                                "${if (type.connectionsLocked) 1 else connections}",
+                                Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                                color = BD.Cyan,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                        if (!type.connectionsLocked) {
+                            TextButton(
+                                onClick = { if (connections < 4) connections++ },
+                                enabled = connections < 4,
+                            ) { Text("+", fontSize = 18.sp) }
+                        }
+                    }
+                }
+
                 Spacer(Modifier.height(10.dp))
                 Surface(
                     shape = RoundedCornerShape(14.dp),
                     color = BD.SurfaceHigh,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text(
-                        type.hint,
-                        Modifier.padding(12.dp),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = BD.TextLow,
-                    )
+                    Column(Modifier.padding(12.dp)) {
+                        Text(
+                            type.hint,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = BD.TextLow,
+                        )
+                        if (type.knownCredentials.isNotEmpty()) {
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                "Si el usuario que pongas falla, se prueban solos estos:",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = BD.CyanSoft,
+                            )
+                            type.knownCredentials.forEach { c ->
+                                Text(
+                                    "• ${c.user} / ${c.password}  (${c.from})",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = BD.TextLow,
+                                )
+                            }
+                        }
+                    }
                 }
 
                 testResult?.let {
+                    val ok = it.startsWith("Conectado")
                     Spacer(Modifier.height(10.dp))
                     Surface(shape = RoundedCornerShape(14.dp), color = BD.SurfaceHigh, modifier = Modifier.fillMaxWidth()) {
-                        Text(
-                            it,
-                            Modifier.padding(12.dp),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = if (it.startsWith("Conectado")) BD.Success else BD.Danger,
-                        )
+                        Column(Modifier.padding(12.dp)) {
+                            Text(
+                                it,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (ok) BD.Success else BD.Danger,
+                            )
+                            if (!testLog.isNullOrBlank()) {
+                                Spacer(Modifier.height(8.dp))
+                                TextButton(
+                                    onClick = { showLog = !showLog },
+                                    contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+                                ) {
+                                    Text(
+                                        if (showLog) "Ocultar el detalle de la conexión"
+                                        else "Ver el detalle de la conexión",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = BD.Cyan,
+                                    )
+                                }
+                                if (showLog) {
+                                    Surface(
+                                        shape = RoundedCornerShape(10.dp),
+                                        color = BD.Night,
+                                        modifier = Modifier.fillMaxWidth(),
+                                    ) {
+                                        Text(
+                                            testLog!!,
+                                            Modifier
+                                                .heightIn(max = 220.dp)
+                                                .verticalScroll(rememberScrollState())
+                                                .padding(10.dp),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                            fontSize = 11.sp,
+                                            color = BD.TextLow,
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -407,7 +507,12 @@ private fun ServerDialog(
                         onClick = {
                             testing = true
                             testResult = "Probando…"
-                            onTest(build()) { testResult = it; testing = false }
+                            testLog = null
+                            onTest(build()) { text, logText ->
+                                testResult = text
+                                testLog = logText
+                                testing = false
+                            }
                         },
                         enabled = valid && !testing,
                         shape = RoundedCornerShape(14.dp),

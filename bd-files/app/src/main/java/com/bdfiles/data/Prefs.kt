@@ -203,6 +203,7 @@ class Prefs(context: Context) {
                         deviceType = type,
                         passive = o.optBoolean("passive", type.defaultPassive),
                         startPath = o.optString("startPath", type.startPath),
+                        connections = o.optInt("connections", type.defaultConnections),
                     )
                 }
             }.getOrDefault(emptyList())
@@ -215,7 +216,7 @@ class Prefs(context: Context) {
                         .put("name", it.name).put("host", it.host).put("port", it.port)
                         .put("user", it.user).put("password", it.password)
                         .put("type", it.deviceType.name).put("passive", it.passive)
-                        .put("startPath", it.startPath),
+                        .put("startPath", it.startPath).put("connections", it.connections),
                 )
             }
             sp.edit().putString("servers", arr.toString()).apply()

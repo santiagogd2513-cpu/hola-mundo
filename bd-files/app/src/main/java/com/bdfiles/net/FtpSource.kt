@@ -20,8 +20,14 @@ data class FtpServerConfig(
     val deviceType: FtpDeviceType = FtpDeviceType.PC_OTHER,
     val passive: Boolean = deviceType.defaultPassive,
     val startPath: String = deviceType.startPath,
+    /** Operaciones a la vez. Las consolas solo aguantan una. */
+    val connections: Int = deviceType.defaultConnections,
 ) {
     val id: String get() = "ftp:$name"
+
+    /** El número de conexiones que se usará de verdad (las consolas siempre 1). */
+    val effectiveConnections: Int
+        get() = if (deviceType.connectionsLocked) 1 else connections.coerceIn(1, 4)
 }
 
 /** Un servidor FTP visto como si fuera una carpeta más. */
@@ -42,15 +48,45 @@ class FtpSource(val config: FtpServerConfig) : FileSource {
     /** Se recuerda el último listado para saber si algo es carpeta sin volver a preguntar. */
     private val dirCache = HashMap<String, Boolean>()
 
-    fun testConnection(): String {
+    /**
+     * Limita cuántas cosas se piden a la vez. En consolas es 1: si se le mandan
+     * dos peticiones al mismo tiempo, el servidor de la consola se cuelga.
+     */
+    private val gate = java.util.concurrent.Semaphore(config.effectiveConnections, true)
+
+    private inline fun <T> oneAtATime(block: () -> T): T {
+        gate.acquire()
+        try {
+            return block()
+        } finally {
+            gate.release()
+        }
+    }
+
+    /** Lo hablado con el servidor, para enseñarlo cuando algo falla. */
+    val connectionLog: String get() = client.logText
+
+    fun testConnection(): String = oneAtATime {
         client.connect()
         val here = client.pwd()
-        val n = client.list(config.startPath).size
-        return "Conectado a ${config.host}.\nCarpeta actual: $here\n$n elementos en ${config.startPath}"
+        val items = client.list(config.startPath)
+        val cred = client.workingCredential
+        buildString {
+            append("Conectado a ${config.host}:${config.port}\n")
+            if (cred != null) append("Usuario: ${cred.user}  (${cred.from})\n")
+            append("Carpeta actual: $here\n")
+            append("${items.size} elementos en ${config.startPath}")
+            if (items.isNotEmpty()) {
+                append("\n\n")
+                append(items.take(6).joinToString("\n") { (if (it.isDir) "📁 " else "📄 ") + it.name })
+                if (items.size > 6) append("\n…y ${items.size - 6} más")
+            }
+            append("\n\nConexiones a la vez: ${config.effectiveConnections}")
+        }
     }
 
     override fun list(path: String): List<FileItem> = try {
-        client.list(path).map { e ->
+        oneAtATime { client.list(path) }.map { e ->
             val full = joinPath(path, e.name)
             dirCache[full] = e.isDir
             FileItem(
@@ -74,7 +110,7 @@ class FtpSource(val config: FtpServerConfig) : FileSource {
     }
 
     override fun openRead(path: String): InputStream = try {
-        client.openReadStream(path)
+        oneAtATime { client.openReadStream(path) }
     } catch (e: Exception) {
         throw ftpError(e)
     }
@@ -88,7 +124,7 @@ class FtpSource(val config: FtpServerConfig) : FileSource {
         override fun close() {
             super.close()
             try {
-                client.upload(path, ByteArrayInputStream(toByteArray()))
+                oneAtATime { client.upload(path, ByteArrayInputStream(toByteArray())) }
             } catch (e: Exception) {
                 throw ftpError(e)
             }
@@ -97,13 +133,13 @@ class FtpSource(val config: FtpServerConfig) : FileSource {
 
     /** Sube directamente desde un flujo, sin pasar por memoria. */
     fun uploadFrom(path: String, input: InputStream, onProgress: (Long) -> Unit) = try {
-        client.upload(path, input, onProgress)
+        oneAtATime { client.upload(path, input, onProgress) }
     } catch (e: Exception) {
         throw ftpError(e)
     }
 
     fun downloadTo(path: String, out: OutputStream, onProgress: (Long) -> Unit) = try {
-        client.download(path, out, onProgress)
+        oneAtATime { client.download(path, out, onProgress) }
     } catch (e: Exception) {
         throw ftpError(e)
     }
@@ -115,7 +151,7 @@ class FtpSource(val config: FtpServerConfig) : FileSource {
             var cur = ""
             for (p in parts) {
                 cur = "$cur/$p"
-                runCatching { client.mkdir(cur) }
+                oneAtATime { runCatching { client.mkdir(cur) } }
             }
         } catch (e: Exception) {
             throw ftpError(e)
@@ -124,7 +160,7 @@ class FtpSource(val config: FtpServerConfig) : FileSource {
 
     override fun createFile(path: String) {
         try {
-            client.upload(path, ByteArrayInputStream(ByteArray(0)))
+            oneAtATime { client.upload(path, ByteArrayInputStream(ByteArray(0))) }
         } catch (e: Exception) {
             throw ftpError(e)
         }
@@ -135,9 +171,9 @@ class FtpSource(val config: FtpServerConfig) : FileSource {
             val isDir = dirCache[path] ?: (stat(path)?.isDir ?: false)
             if (isDir) {
                 for (child in list(path)) delete(child.path)
-                client.deleteDir(path)
+                oneAtATime { client.deleteDir(path) }
             } else {
-                client.deleteFile(path)
+                oneAtATime { client.deleteFile(path) }
             }
         } catch (e: Exception) {
             throw ftpError(e)
@@ -147,14 +183,14 @@ class FtpSource(val config: FtpServerConfig) : FileSource {
     override fun rename(path: String, newName: String) {
         try {
             val parent = parentOf(path) ?: throw UserError("No se puede renombrar la raíz")
-            client.rename(path, joinPath(parent, newName))
+            oneAtATime { client.rename(path, joinPath(parent, newName)) }
         } catch (e: Exception) {
             throw ftpError(e)
         }
     }
 
     override fun moveWithin(from: String, to: String): Boolean = try {
-        client.rename(from, to)
+        oneAtATime { client.rename(from, to) }
         true
     } catch (_: Exception) {
         false

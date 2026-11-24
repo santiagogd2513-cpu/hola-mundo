@@ -172,7 +172,12 @@ private fun AppRoot(vm: AppViewModel) {
     }
 
     vm.result?.let { r -> ResultDialog(r) { vm.result = null } }
-    vm.message?.let { m -> MessageDialog(m) { vm.message = null } }
+    vm.message?.let { m ->
+        MessageDialog(m, details = vm.lastFtpLog) {
+            vm.message = null
+            vm.lastFtpLog = null
+        }
+    }
 
     val progress by vm.progress.collectAsStateWithLifecycle()
     progress?.let { p -> ProgressOverlay(p) { vm.cancelTask() } }

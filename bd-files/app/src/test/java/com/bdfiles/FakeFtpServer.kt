@@ -21,6 +21,13 @@ class FakeFtpServer(
     val root: File,
     private val dosStyle: Boolean = false,
     private val requirePassword: Boolean = true,
+    /** Usuario y contraseña que acepta. */
+    private val acceptUser: String = "usuario",
+    private val acceptPass: String = "secreto",
+    /** Simula un servidor que no entiende CWD (hay consolas así). */
+    private val refuseCwd: Boolean = false,
+    /** Simula un servidor que solo admite EPSV, no PASV. */
+    private val onlyEpsv: Boolean = false,
 ) {
     private val server = ServerSocket(0, 10, InetAddress.getByName("127.0.0.1"))
     val port: Int get() = server.localPort
@@ -45,6 +52,7 @@ class FakeFtpServer(
         private val reader = BufferedReader(InputStreamReader(socket.getInputStream(), Charsets.ISO_8859_1))
         private val out = socket.getOutputStream()
         private var cwd = "/"
+        private var lastUser = ""
         private var authed = !requirePassword
         private var dataServer: ServerSocket? = null
         private var renameFrom: String? = null
@@ -68,10 +76,13 @@ class FakeFtpServer(
                 val cmd = line.substringBefore(' ').uppercase(Locale.US)
                 val arg = line.substringAfter(' ', "").trim()
                 when (cmd) {
-                    "USER" -> reply(if (requirePassword) "331 Falta la contraseña" else "230 Adelante")
+                    "USER" -> {
+                        lastUser = arg
+                        reply(if (requirePassword) "331 Falta la contraseña" else "230 Adelante")
+                    }
                     "PASS" -> {
-                        authed = arg == "secreto"
-                        reply(if (authed) "230 Sesión iniciada" else "530 Contraseña incorrecta")
+                        authed = lastUser == acceptUser && arg == acceptPass
+                        reply(if (authed) "230 Sesión iniciada" else "530 Usuario o contraseña incorrectos")
                     }
                     "SYST" -> reply("215 UNIX Type: L8")
                     "TYPE" -> reply("200 Tipo cambiado")
@@ -79,6 +90,7 @@ class FakeFtpServer(
                     "NOOP" -> reply("200 Aquí sigo")
                     "PWD" -> reply("257 \"$cwd\" es la carpeta actual")
                     "CWD" -> {
+                        if (refuseCwd) { reply("502 Orden no admitida"); continue }
                         val f = resolve(arg)
                         if (f.isDirectory) {
                             cwd = if (arg.startsWith("/")) arg.trimEnd('/').ifEmpty { "/" } else "$cwd/$arg"
@@ -87,7 +99,14 @@ class FakeFtpServer(
                             reply("550 No existe la carpeta")
                         }
                     }
+                    "EPSV" -> {
+                        dataServer?.close()
+                        val ds = ServerSocket(0, 1, InetAddress.getByName("127.0.0.1"))
+                        dataServer = ds
+                        reply("229 Entering Extended Passive Mode (|||${ds.localPort}|)")
+                    }
                     "PASV" -> {
+                        if (onlyEpsv) { reply("502 Usa EPSV"); continue }
                         dataServer?.close()
                         val ds = ServerSocket(0, 1, InetAddress.getByName("127.0.0.1"))
                         dataServer = ds
@@ -96,7 +115,8 @@ class FakeFtpServer(
                     }
                     "LIST" -> {
                         if (!authed) { reply("530 Inicia sesión primero"); continue }
-                        val dir = resolve(arg.ifEmpty { "." })
+                        val cleanArg = arg.removePrefix("-la").removePrefix("-a").trim()
+                        val dir = resolve(cleanArg.ifEmpty { "." })
                         reply("150 Abriendo conexión de datos")
                         withData { s ->
                             val sb = StringBuilder()

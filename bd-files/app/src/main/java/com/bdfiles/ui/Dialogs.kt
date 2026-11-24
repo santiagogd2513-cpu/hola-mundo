@@ -359,13 +359,47 @@ fun ResultDialog(r: OpResult, onDismiss: () -> Unit) {
     )
 }
 
-/** Mensaje sencillo. */
+/** Mensaje sencillo, con un detalle técnico que se puede desplegar. */
 @Composable
-fun MessageDialog(text: String, onDismiss: () -> Unit) {
+fun MessageDialog(text: String, details: String? = null, onDismiss: () -> Unit) {
+    var showDetails by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(24.dp),
-        text = { Text(text, modifier = Modifier.verticalScroll(rememberScrollState())) },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                Text(text)
+                if (!details.isNullOrBlank()) {
+                    Spacer(Modifier.height(10.dp))
+                    TextButton(
+                        onClick = { showDetails = !showDetails },
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+                    ) {
+                        Text(
+                            if (showDetails) "Ocultar el detalle de la conexión"
+                            else "Ver el detalle de la conexión",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = BD.Cyan,
+                        )
+                    }
+                    if (showDetails) {
+                        Surface(shape = RoundedCornerShape(10.dp), color = BD.Night, modifier = Modifier.fillMaxWidth()) {
+                            Text(
+                                details,
+                                Modifier
+                                    .heightIn(max = 260.dp)
+                                    .verticalScroll(rememberScrollState())
+                                    .padding(10.dp),
+                                style = MaterialTheme.typography.bodySmall,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 11.sp,
+                                color = BD.TextLow,
+                            )
+                        }
+                    }
+                }
+            }
+        },
         confirmButton = { TextButton(onClick = onDismiss) { Text("Aceptar") } },
     )
 }

@@ -741,14 +741,29 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---------------------------------------------------------- red
 
+    /** Detalle de la última conexión FTP que falló, para poder enseñarlo. */
+    var lastFtpLog by mutableStateOf<String?>(null)
+
     fun connectServer(config: FtpServerConfig) {
         runTask {
             _progress.value = OpProgress("Conectando", "${config.host}:${config.port}", indeterminate = true)
+            // Si ya había una conexión con ese nombre, se cierra antes.
+            sources.remove(config.id)?.let { runCatching { it.close() } }
             val s = FtpSource(config)
-            val info = s.testConnection()
+            val info = try {
+                s.testConnection()
+            } catch (e: Exception) {
+                val log = runCatching { s.connectionLog }.getOrDefault("")
+                runCatching { s.close() }
+                withContext(Dispatchers.Main + NonCancellable) {
+                    lastFtpLog = log.ifBlank { null }
+                }
+                throw e
+            }
             sources[config.id] = s
             withContext(Dispatchers.Main + NonCancellable) {
                 prefs.saveServer(config)
+                lastFtpLog = null
                 _progress.value = null
                 newTab(config.id, config.startPath)
                 screen = Screen.BROWSER
@@ -757,11 +772,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun testServer(config: FtpServerConfig, onDone: (String) -> Unit) {
+    /** Prueba la conexión y devuelve el resultado y el detalle de lo hablado con el servidor. */
+    fun testServer(config: FtpServerConfig, onDone: (String, String) -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
-            val text = runCatching { FtpSource(config).use { it.testConnection() } }
+            val source = FtpSource(config)
+            val text = runCatching { source.testConnection() }
                 .getOrElse { "No se pudo conectar:\n${it.message}" }
-            withContext(Dispatchers.Main) { onDone(text) }
+            val log = runCatching { source.connectionLog }.getOrDefault("")
+            runCatching { source.close() }
+            withContext(Dispatchers.Main) { onDone(text, log) }
         }
     }
 
