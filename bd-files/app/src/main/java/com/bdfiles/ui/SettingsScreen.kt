@@ -1,0 +1,295 @@
+package com.bdfiles.ui
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.bdfiles.AppViewModel
+import com.bdfiles.BuildConfig
+import com.bdfiles.Screen
+import com.bdfiles.core.ShizukuBridge
+import com.bdfiles.core.SortBy
+import com.bdfiles.core.formatSize
+import com.bdfiles.data.Prefs
+import com.bdfiles.ui.theme.BD
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
+    val prefs = vm.prefs
+    // Un contador para redibujar cuando cambia un ajuste guardado.
+    var revision by remember { mutableIntStateOf(0) }
+    fun changed() { revision++ }
+
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            TopAppBar(
+                modifier = Modifier.background(BD.headerGradient()),
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Atrás", tint = BD.LightPurple)
+                    }
+                },
+                title = { Text("Ajustes") },
+            )
+        },
+    ) { pad ->
+        @Suppress("UNUSED_EXPRESSION") revision
+        Column(
+            Modifier
+                .padding(pad)
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState()),
+        ) {
+            // ---------------------------------------------- interfaz y estilo
+            SectionHeader("Interfaz y estilo", "🎨")
+
+            SettingRow("Tema", "Claro, oscuro o el del sistema") {}
+            Row(
+                Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                val modes = listOf<Pair<String, Boolean?>>(
+                    "Sistema" to null, "Oscuro" to true, "Claro" to false,
+                )
+                modes.forEach { (label, value) ->
+                    FilterChip(
+                        selected = prefs.darkMode == value,
+                        onClick = { prefs.darkMode = value; changed() },
+                        label = { Text(label) },
+                        shape = RoundedCornerShape(50),
+                    )
+                }
+            }
+
+            SettingRow("Pestañas", "Varias carpetas abiertas a la vez") {
+                Switch(checked = prefs.tabsEnabled, onCheckedChange = { prefs.tabsEnabled = it; changed() })
+            }
+            if (prefs.tabsEnabled) {
+                var maxTabs by remember { mutableIntStateOf(prefs.maxTabs) }
+                Column(Modifier.padding(horizontal = 20.dp)) {
+                    Text(
+                        "Máximo de pestañas: $maxTabs (el tope es ${Prefs.MAX_TABS_LIMIT})",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = BD.TextLow,
+                    )
+                    Slider(
+                        value = maxTabs.toFloat(),
+                        onValueChange = { maxTabs = it.toInt() },
+                        onValueChangeFinished = { prefs.maxTabs = maxTabs; changed() },
+                        valueRange = 2f..Prefs.MAX_TABS_LIMIT.toFloat(),
+                        steps = Prefs.MAX_TABS_LIMIT - 3,
+                    )
+                }
+            }
+
+            SettingRow("Miniaturas", "Fotos, vídeos, PDF, APK y iconos de los .jar") {
+                Switch(checked = prefs.showThumbnails, onCheckedChange = { prefs.showThumbnails = it; changed(); vm.reload() })
+            }
+            SettingRow("Iconos de colores", "Cada tipo de archivo con su color") {
+                Switch(checked = prefs.colorfulIcons, onCheckedChange = { prefs.colorfulIcons = it; changed() })
+            }
+            SettingRow("Filas compactas", "Caben más archivos en pantalla") {
+                Switch(checked = prefs.compactRows, onCheckedChange = { prefs.compactRows = it; changed() })
+            }
+            SettingRow("Barra de ruta", "La línea de migas de arriba") {
+                Switch(checked = prefs.showPathBar, onCheckedChange = { prefs.showPathBar = it; changed() })
+            }
+
+            // ---------------------------------------------- archivos y listado
+            SectionHeader("Archivos y listado", "📂")
+
+            SettingRow("Mostrar archivos y carpetas ocultos", "Los que empiezan por punto") {
+                Switch(checked = prefs.showHidden, onCheckedChange = { prefs.showHidden = it; changed(); vm.reload() })
+            }
+            SettingRow("Carpetas primero", "Antes que los archivos") {
+                Switch(checked = prefs.foldersFirst, onCheckedChange = { prefs.foldersFirst = it; changed(); vm.resort() })
+            }
+            SettingRow("Ordenar por") {}
+            Row(
+                Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                SortBy.entries.forEach { s ->
+                    FilterChip(
+                        selected = prefs.sortBy == s,
+                        onClick = { prefs.sortBy = s; changed(); vm.resort() },
+                        label = { Text(s.label) },
+                        shape = RoundedCornerShape(50),
+                    )
+                }
+            }
+            SettingRow("Orden invertido", "De mayor a menor, de la Z a la A…") {
+                Switch(checked = prefs.sortDescending, onCheckedChange = { prefs.sortDescending = it; changed(); vm.resort() })
+            }
+
+            // ---------------------------------------------- verificaciones
+            SectionHeader("Verificaciones y seguridad", "🛡️")
+
+            SettingRow(
+                "Verificar al copiar y mover",
+                "Se comprueba la copia antes de dar por buena la operación. Al mover, el original " +
+                    "solo se borra si la comprobación sale bien. Va algo más lento, pero no se pierde nada.",
+            ) {
+                Switch(checked = prefs.verifyCopies, onCheckedChange = { prefs.verifyCopies = it; changed() })
+            }
+            SettingRow("Usar papelera", "Al borrar se puede mandar a la papelera en vez de borrar del todo") {
+                Switch(checked = prefs.useTrash, onCheckedChange = { prefs.useTrash = it; changed() })
+            }
+            SettingRow("Vaciar la papelera ahora", "Borra para siempre lo que haya dentro", onClick = { vm.emptyTrash() }) {
+                Text("🗑️", fontSize = 20.sp)
+            }
+            SettingRow("Abrir la papelera", onClick = { vm.openTrash(); onBack() }) {
+                Text("›", fontSize = 22.sp, color = BD.TextLow)
+            }
+
+            // ---------------------------------------------- permisos
+            SectionHeader("Permisos y acceso", "🔑")
+
+            val allFiles = vm.hasAllFilesAccess()
+            SettingRow(
+                "Acceso a todos los archivos",
+                if (allFiles) "Concedido: BD Files puede ver todo el almacenamiento"
+                else "Hace falta para ver todas las carpetas. Tócalo para dárselo.",
+                onClick = { if (!allFiles) vm.requestAllFilesAccess() },
+            ) {
+                Text(if (allFiles) "✅" else "⚠️", fontSize = 20.sp)
+            }
+
+            val shizukuRunning = ShizukuBridge.isRunning()
+            val shizukuOk = vm.shizukuReady
+            SettingRow(
+                "Shizuku",
+                when {
+                    shizukuOk -> "Activo. Puedes dar permisos a otras apps y entrar en carpetas del sistema."
+                    shizukuRunning -> "Instalado pero sin permiso. Tócalo para pedírselo."
+                    else -> "No está en marcha. Abre la app Shizuku y arráncala."
+                },
+                onClick = {
+                    if (shizukuRunning && !shizukuOk) ShizukuBridge.requestPermission()
+                    vm.refreshShizuku()
+                },
+            ) {
+                Text(if (shizukuOk) "✅" else if (shizukuRunning) "⚠️" else "⬜", fontSize = 20.sp)
+            }
+            SettingRow("Permisos de otras apps", "Dar acceso al almacenamiento a emuladores y demás", onClick = {
+                vm.screen = Screen.APP_PERMISSIONS
+            }) {
+                Text("›", fontSize = 22.sp, color = BD.TextLow)
+            }
+
+            // ---------------------------------------------- almacenamiento
+            SectionHeader("Almacenamiento", "💾")
+            vm.volumes.forEach { v ->
+                val src = runCatching { vm.source(if (v.path == vm.internalRoot) "local" else "vol:${v.path}") }.getOrNull()
+                val free = src?.freeSpace() ?: -1
+                val total = src?.totalSpace() ?: -1
+                SettingRow(
+                    v.title,
+                    if (free >= 0 && total > 0) "${formatSize(free)} libres de ${formatSize(total)}" else v.path,
+                    onClick = {
+                        vm.navigate(v.path, if (v.path == vm.internalRoot) "local" else "vol:${v.path}")
+                        onBack()
+                    },
+                ) {
+                    Text("›", fontSize = 22.sp, color = BD.TextLow)
+                }
+            }
+            if (vm.shizukuReady) {
+                SettingRow("Sistema de archivos completo (/)", "Entrar con Shizuku a /data, /system…", onClick = {
+                    vm.navigate("/", "shizuku")
+                    onBack()
+                }) { Text("›", fontSize = 22.sp, color = BD.TextLow) }
+            }
+
+            // ---------------------------------------------- acerca de
+            SectionHeader("Acerca de", "ℹ️")
+            Card(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 6.dp),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = BD.SurfaceCard),
+            ) {
+                Column(Modifier.padding(20.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            Modifier
+                                .size(46.dp)
+                                .background(BD.gradient, RoundedCornerShape(14.dp)),
+                            contentAlignment = Alignment.Center,
+                        ) { Text("📁", fontSize = 24.sp) }
+                        Spacer(Modifier.width(14.dp))
+                        Column {
+                            Text("BD Files", style = MaterialTheme.typography.titleLarge)
+                            Text(
+                                "Gestor de archivos",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = BD.TextLow,
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(16.dp))
+                    HorizontalDivider(color = BD.Outline)
+                    Spacer(Modifier.height(12.dp))
+                    AboutLine("Versión", "v${BuildConfig.VERSION_NAME}")
+                    AboutLine("Compilación", "número ${BuildConfig.BUILD_NUMBER}")
+                    AboutLine("Autor", BuildConfig.AUTHOR)
+                }
+            }
+            Spacer(Modifier.height(36.dp))
+        }
+    }
+}
+
+@Composable
+private fun AboutLine(label: String, value: String) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = BD.TextLow)
+        Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = BD.LightPurple)
+    }
+}
